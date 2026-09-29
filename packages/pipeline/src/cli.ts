@@ -3,6 +3,7 @@ import { Command } from 'commander';
 import { log } from './lib/logger';
 import { crawlWebsites } from './steps/crawl-websites';
 import { discoverWebsites } from './steps/discover-websites';
+import { enrichGithub } from './steps/enrich-github';
 import { ingestOffres } from './steps/ingest-offres';
 import { ingestSirene } from './steps/ingest-sirene';
 import { matchOffres } from './steps/match-offres';
@@ -57,10 +58,11 @@ program
 program
   .command('enrich')
   .command('github')
-  .option('--force')
   .option('--limit <n>', 'nombre max', Number)
-  .option('--siren <siren>')
-  .action(notImplemented('enrich github'));
+  .option('--siren <siren>', 'une seule entreprise')
+  .action(async (opts: { limit?: number; siren?: string }) => {
+    await enrichGithub(getDb(), opts);
+  });
 program.command('signals').action(notImplemented('signals'));
 program
   .command('run')

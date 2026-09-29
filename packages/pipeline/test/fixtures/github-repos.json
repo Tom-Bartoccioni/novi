@@ -1,0 +1,57 @@
+[
+  {
+    "id": 1,
+    "name": "platform",
+    "full_name": "cliken-web/platform",
+    "private": false,
+    "fork": false,
+    "language": "TypeScript",
+    "pushed_at": "2026-09-10T10:00:00Z",
+    "stargazers_count": 12,
+    "archived": false
+  },
+  {
+    "id": 2,
+    "name": "api",
+    "full_name": "cliken-web/api",
+    "private": false,
+    "fork": false,
+    "language": "Go",
+    "pushed_at": "2026-08-01T10:00:00Z",
+    "stargazers_count": 3,
+    "archived": false
+  },
+  {
+    "id": 3,
+    "name": "old-site",
+    "full_name": "cliken-web/old-site",
+    "private": false,
+    "fork": false,
+    "language": "PHP",
+    "pushed_at": "2021-01-01T10:00:00Z",
+    "stargazers_count": 0,
+    "archived": true
+  },
+  {
+    "id": 4,
+    "name": "forked-lib",
+    "full_name": "cliken-web/forked-lib",
+    "private": false,
+    "fork": true,
+    "language": "Rust",
+    "pushed_at": "2026-09-01T10:00:00Z",
+    "stargazers_count": 0,
+    "archived": false
+  },
+  {
+    "id": 5,
+    "name": "docs",
+    "full_name": "cliken-web/docs",
+    "private": false,
+    "fork": false,
+    "language": null,
+    "pushed_at": "2026-09-01T10:00:00Z",
+    "stargazers_count": 0,
+    "archived": false
+  }
+]
