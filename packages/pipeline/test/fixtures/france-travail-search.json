@@ -1,0 +1,63 @@
+{
+  "resultats": [
+    {
+      "id": "190ABCD",
+      "intitule": "Développeur Full Stack React / Node.js (H/F)",
+      "description": "Au sein d'une startup de 20 personnes à Sophia Antipolis, vous développez notre plateforme SaaS. Stack : React, TypeScript, Node.js, PostgreSQL, déployée sur AWS.",
+      "dateCreation": "2026-09-01T08:12:00.000Z",
+      "dateActualisation": "2026-09-20T09:00:00.000Z",
+      "lieuTravail": {
+        "libelle": "06 - VALBONNE",
+        "latitude": 43.6197,
+        "longitude": 7.0373,
+        "codePostal": "06560",
+        "commune": "06152"
+      },
+      "romeCode": "M1805",
+      "romeLibelle": "Études et développement informatique",
+      "entreprise": {
+        "nom": "CLIKEN WEB",
+        "description": "Éditeur de solutions web",
+        "url": "https://www.cliken-web.com"
+      },
+      "typeContrat": "CDI",
+      "typeContratLibelle": "Contrat à durée indéterminée",
+      "experienceExige": "D",
+      "origineOffre": {
+        "origine": "1",
+        "urlOrigine": "https://candidat.francetravail.fr/offres/recherche/detail/190ABCD"
+      }
+    },
+    {
+      "id": "190EFGH",
+      "intitule": "Ingénieur DevOps (H/F)",
+      "description": "Kubernetes, Terraform, GitLab CI. Poste à Nice.",
+      "dateCreation": "2026-08-15T10:00:00.000Z",
+      "lieuTravail": {
+        "libelle": "06 - NICE",
+        "latitude": 43.7102,
+        "longitude": 7.262,
+        "codePostal": "06000",
+        "commune": "06088"
+      },
+      "romeCode": "M1810",
+      "entreprise": { "nom": "EMPLOYEUR INCONNU SARL" },
+      "typeContrat": "CDD",
+      "origineOffre": {
+        "origine": "2",
+        "urlOrigine": "https://example.org/jobs/190EFGH",
+        "partenaires": [{ "nom": "Partenaire", "url": "https://example.org/jobs/190EFGH" }]
+      }
+    },
+    {
+      "id": "190IJKL",
+      "intitule": "Développeur Python confidentiel",
+      "description": "Django et Postgres.",
+      "dateCreation": "2026-07-02T10:00:00.000Z",
+      "lieuTravail": { "libelle": "06 - ANTIBES", "codePostal": "06600" },
+      "romeCode": "M1805",
+      "typeContrat": "CDI"
+    }
+  ],
+  "filtresPossibles": []
+}
