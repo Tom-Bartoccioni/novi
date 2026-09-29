@@ -16,7 +16,9 @@ const elementSchema = z
   })
   .passthrough();
 
-const responseSchema = z.object({ elements: z.array(elementSchema) }).passthrough();
+const responseSchema = z
+  .object({ elements: z.array(elementSchema), remark: z.string().optional() })
+  .passthrough();
 
 export type OsmBusiness = { name: string; website: string; latitude: number; longitude: number };
 
@@ -27,8 +29,11 @@ export function normalizeWebsite(raw: string): string | null {
   return `https://${trimmed}`;
 }
 
+/** Overpass renvoie HTTP 200 avec un `remark` quand la requête a échoué côté serveur (délai, mémoire). */
 export function parseOverpass(json: unknown): OsmBusiness[] {
   const data = responseSchema.parse(json);
+  if (data.remark && /runtime error|timed out/i.test(data.remark))
+    throw new Error(`Overpass : ${data.remark}`);
   const out: OsmBusiness[] = [];
   for (const e of data.elements) {
     const name = e.tags?.name;
@@ -45,8 +50,12 @@ export type BBox = { south: number; west: number; north: number; east: number };
 
 const OVERPASS_RETRY_DELAY_MS = 30_000;
 
-function isRetryable(err: unknown): boolean {
-  return !(err instanceof HttpError) || err.status === 429 || err.status === 504;
+/** Réessayable : 429/504, erreur signalée par Overpass, ou échec réseau (délai, connexion). Pas une réponse malformée. */
+export function isRetryable(err: unknown): boolean {
+  if (err instanceof HttpError) return err.status === 429 || err.status === 504;
+  if (!(err instanceof Error)) return false;
+  if (err.message.startsWith('Overpass :')) return true;
+  return err.name === 'AbortError' || err instanceof TypeError;
 }
 
 async function queryOverpass(query: string): Promise<OsmBusiness[]> {
@@ -83,6 +92,9 @@ export type NamedCompany = {
 const MAX_OSM_DISTANCE_KM = 0.3;
 const OSM_SIMILARITY = 0.85;
 
+/** Comparaison sans espaces : « Cote Web » et « Côteweb » sont le même nom. */
+const key = (s: string) => s.replace(/\s+/g, '');
+
 export function matchOsmBusiness(company: NamedCompany, businesses: OsmBusiness[]): OsmBusiness | null {
   const names = [company.name, company.legalName, ...company.tradeNames]
     .map(normalizeCompanyName)
@@ -90,8 +102,8 @@ export function matchOsmBusiness(company: NamedCompany, businesses: OsmBusiness[
   let best: { b: OsmBusiness; score: number } | null = null;
   for (const b of businesses) {
     if (distanceKm(company, b) > MAX_OSM_DISTANCE_KM) continue;
-    const bn = normalizeCompanyName(b.name);
-    const score = Math.max(...names.map((n) => (n === bn ? 1 : trigramSimilarity(n, bn))));
+    const bn = key(normalizeCompanyName(b.name));
+    const score = Math.max(...names.map((n) => (key(n) === bn ? 1 : trigramSimilarity(key(n), bn))));
     if (score >= OSM_SIMILARITY && (!best || score > best.score)) best = { b, score };
   }
   return best?.b ?? null;

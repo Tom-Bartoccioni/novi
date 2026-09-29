@@ -19,14 +19,15 @@ export const PARKED_MARKERS = [
   'domain for sale',
   'buy this domain',
   'parked',
-  'parking',
+  'domain parking',
   'sedo',
   'godaddy',
   'hugedomains',
   'dan.com',
   'afternic',
   'this domain',
-  'ce domaine',
+  'ce domaine est',
+  'ce nom de domaine',
   'acheter ce domaine',
 ];
 
@@ -72,11 +73,14 @@ export function verifyHomepage(html: string, c: NameFields, url?: string): boole
 
 const guessLimiter = createLimiter(4);
 
-async function defaultFetchHomepage(url: string): Promise<string | null> {
+export type Homepage = { url: string; html: string };
+
+/** Page d'accueil d'un domaine candidat, avec l'URL finale après redirections. */
+async function defaultFetchHomepage(url: string): Promise<Homepage | null> {
   try {
     const page = await guessLimiter(() => fetchText(url, { timeoutMs: 8_000, maxBytes: 300_000 }));
     if (page.status >= 400 || !page.contentType.includes('html')) return null;
-    return page.body;
+    return { url: page.url, html: page.body };
   } catch {
     return null;
   }
@@ -116,8 +120,10 @@ export type DiscoverOptions = {
   offerUrls?: Map<string, string>;
   osm?: OsmBusiness[];
   fetchOsm?: (bbox: BBox) => Promise<OsmBusiness[]>;
-  fetchHomepage?: (url: string) => Promise<string | null>;
+  fetchHomepage?: (url: string) => Promise<Homepage | null>;
 };
+
+const stripTrailingSlash = (url: string) => url.replace(/\/+$/, '');
 
 export function discoverWebsites(db: Db, opts: DiscoverOptions): Promise<RunResult> {
   const fetchHomepage = opts.fetchHomepage ?? defaultFetchHomepage;
@@ -140,6 +146,14 @@ export function discoverWebsites(db: Db, opts: DiscoverOptions): Promise<RunResu
           : and(isNull(companies.website), notManual);
       let targets = db.select().from(companies).where(where).all();
       if (opts.limit !== undefined) targets = targets.slice(0, opts.limit);
+      if (opts.siren && targets.length === 0) {
+        const row = db
+          .select({ websiteSource: companies.websiteSource })
+          .from(companies)
+          .where(eq(companies.siren, opts.siren))
+          .get();
+        if (row?.websiteSource === 'manuel') warn(`${opts.siren} : site renseigné manuellement, non modifié`);
+      }
       log(`${targets.length} entreprises à traiter`);
 
       const offerUrls = opts.offerUrls ?? offerWebsiteMap(db);
@@ -173,9 +187,9 @@ export function discoverWebsites(db: Db, opts: DiscoverOptions): Promise<RunResu
           }
           if (!found) {
             for (const url of candidateDomains(c)) {
-              const html = await fetchHomepage(url);
-              if (html && verifyHomepage(html, c, url)) {
-                found = { website: url, source: 'devinette', confidence: 0.6 };
+              const page = await fetchHomepage(url);
+              if (page && verifyHomepage(page.html, c, page.url)) {
+                found = { website: stripTrailingSlash(page.url), source: 'devinette', confidence: 0.6 };
                 break;
               }
             }
