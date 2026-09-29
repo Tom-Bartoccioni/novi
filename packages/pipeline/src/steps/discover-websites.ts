@@ -47,12 +47,24 @@ export function candidateDomains(c: NameFields): string[] {
   return [...new Set(out)];
 }
 
-export function verifyHomepage(html: string, c: NameFields): boolean {
+/** Vérifie que la page d'accueil correspond à l'entreprise. Avec `url`, rejette aussi les pages vides ou dont le titre n'est que le nom de domaine. */
+export function verifyHomepage(html: string, c: NameFields, url?: string): boolean {
   const $ = cheerio.load(html);
+  const title = $('title').text();
+  const description = $('meta[name="description"]').attr('content') ?? '';
   const text = stripAccents(
-    `${$('title').text()} ${$('meta[name="description"]').attr('content') ?? ''} ${$('meta[property="og:title"]').attr('content') ?? ''}`,
+    `${title} ${description} ${$('meta[property="og:title"]').attr('content') ?? ''}`,
   ).toLowerCase();
   if (PARKED_MARKERS.some((m) => text.includes(m))) return false;
+  if (url) {
+    if (!title.trim() && !description.trim()) return false;
+    const host = new URL(url).hostname.replace(/^www\./, '');
+    const foldedTitle = stripAccents(title)
+      .toLowerCase()
+      .replace(/[\s.-]+/g, '')
+      .replace(/^www/, '');
+    if (foldedTitle === host.replace(/[.-]+/g, '')) return false;
+  }
   const words = new Set([...c.tradeNames, c.name, c.legalName].flatMap(significantWords));
   const slugs = [...c.tradeNames, c.name].map(slugify).filter((s) => s.length >= 4);
   return [...words].some((w) => text.includes(w)) || slugs.some((s) => text.replace(/\s+/g, '').includes(s));
@@ -162,7 +174,7 @@ export function discoverWebsites(db: Db, opts: DiscoverOptions): Promise<RunResu
           if (!found) {
             for (const url of candidateDomains(c)) {
               const html = await fetchHomepage(url);
-              if (html && verifyHomepage(html, c)) {
+              if (html && verifyHomepage(html, c, url)) {
                 found = { website: url, source: 'devinette', confidence: 0.6 };
                 break;
               }

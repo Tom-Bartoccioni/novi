@@ -95,6 +95,26 @@ describe('verifyHomepage', () => {
     expect(verifyHomepage('<title>Logiciels sur-mesure, Data & IA | Inotekk</title>', inotekk)).toBe(true);
     expect(PARKED_MARKERS).toContain('a vendre');
   });
+  it('rejects pages whose title is only the domain name or that have no title and no description', () => {
+    const native = { name: 'Native Consulting', legalName: 'NATIVE CONSULTING', tradeNames: [] };
+    const url = 'https://native-consulting.com';
+    expect(verifyHomepage('<title>native-consulting.com</title>', native, url)).toBe(false);
+    expect(
+      verifyHomepage('<title>www.native-consulting.com</title>', native, 'https://www.native-consulting.com'),
+    ).toBe(false);
+    expect(verifyHomepage('<html></html>', native, url)).toBe(false);
+    expect(verifyHomepage('<title>Native Consulting - conseil IT</title>', native, url)).toBe(true);
+    expect(verifyHomepage('<title>native-consulting.com</title>', native)).toBe(true);
+    const inotekk = { name: 'Inotekk', legalName: 'INOTEKK', tradeNames: [] };
+    expect(verifyHomepage(html, inotekk, 'https://inotekk.com')).toBe(false);
+    expect(
+      verifyHomepage(
+        html,
+        { name: 'Cliken Web', legalName: 'CLIKEN WEB PRO', tradeNames: [] },
+        'https://clikenweb.com',
+      ),
+    ).toBe(true);
+  });
 });
 
 describe('discoverWebsites', () => {
