@@ -1,4 +1,4 @@
-import { companyStatus, getDefaultProfile, profiles } from '@novi/db';
+import { companies, companyStatus, crawlRuns, getDefaultProfile, profiles } from '@novi/db';
 import { describe, expect, it } from 'vitest';
 import {
   availableTechs,
@@ -39,6 +39,7 @@ describe('parseFilters', () => {
       q: '',
     });
     expect(parseFilters({ sort: 'bogus' }).sort).toBe('score');
+    expect(parseFilters({ status: 'bogus' }).status).toBeNull();
   });
 });
 
@@ -86,6 +87,28 @@ describe('listCompanies', () => {
     ]);
     expect(listCompanies(db, profile, parseFilters({ status: 'to_review' })).map((r) => r.name)).toEqual([
       'Cliken Web',
+    ]);
+  });
+  it('sorts by size with the biggest headcount first; "NN" ranks like an unknown headcount', () => {
+    const db = seededDb();
+    db.insert(companies)
+      .values({
+        siren: '000000004',
+        name: 'Sans Effectif',
+        legalName: 'SANS EFFECTIF',
+        nafCode: '62.01Z',
+        headcountRange: 'NN',
+        siretLocal: 'd',
+        latitude: 43.7,
+        longitude: 7.25,
+        city: 'NICE',
+      })
+      .run();
+    const profile = getDefaultProfile(db);
+    expect(listCompanies(db, profile, parseFilters({ sort: 'size' })).map((r) => r.name)).toEqual([
+      'Cliken Web',
+      'Nice Tech Studio',
+      'Sans Effectif',
     ]);
   });
   it('exposes the tech tags available for filtering, with company counts', () => {
@@ -160,6 +183,31 @@ describe('unmatched offers, search, overview', () => {
     const db = seededDb();
     expect(searchCompaniesByName(db, 'tech').map((c) => c.siren)).toEqual(['000000002']);
     expect(searchCompaniesByName(db, '')).toEqual([]);
+  });
+  it('escapes LIKE wildcards and folds accents in the search input', () => {
+    const db = seededDb();
+    expect(searchCompaniesByName(db, 'a%b')).toEqual([]);
+    expect(searchCompaniesByName(db, '_')).toEqual([]);
+    expect(searchCompaniesByName(db, '%')).toEqual([]);
+    expect(searchCompaniesByName(db, 'clikén').map((c) => c.siren)).toEqual(['000000001']);
+  });
+  it('derives a status for each crawl run', () => {
+    const db = seededDb();
+    const now = new Date().toISOString();
+    const threeDaysAgo = new Date(Date.now() - 3 * 24 * 3600 * 1000).toISOString();
+    db.insert(crawlRuns)
+      .values([
+        { command: 'ingest', startedAt: threeDaysAgo, finishedAt: now },
+        { command: 'discover', startedAt: now },
+        { command: 'crawl', startedAt: threeDaysAgo },
+      ])
+      .run();
+    const runs = pipelineOverview(db).runs;
+    expect(runs.map((r) => [r.command, r.status])).toEqual([
+      ['crawl', 'aborted'],
+      ['discover', 'running'],
+      ['ingest', 'done'],
+    ]);
   });
   it('summarises the pipeline state', () => {
     const db = seededDb();
