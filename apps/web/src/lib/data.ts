@@ -79,7 +79,9 @@ export type CompanyListItem = {
   status: CompanyStatus;
 };
 
-const tagIndex = new Map(loadTechTags().map((t) => [t.slug, t]));
+/** Dictionnaire chargé une seule fois : `detectTechs` met en cache ses regex par identité de tableau. */
+const TAGS = loadTechTags();
+const tagIndex = new Map(TAGS.map((t) => [t.slug, t]));
 
 function bestTechs(rows: { tagSlug: string; confidence: number }[]): TechSummary[] {
   const best = new Map<string, number>();
@@ -92,32 +94,43 @@ function bestTechs(rows: { tagSlug: string; confidence: number }[]): TechSummary
     .sort((a, b) => b.confidence - a.confidence || a.label.localeCompare(b.label));
 }
 
-function scoreFor(
-  db: Db,
-  profile: Profile,
-  company: Company,
-  distanceKm: number,
-  techs: { tagSlug: string; confidence: number }[],
-): ScoreResult {
-  const tags = loadTechTags();
-  const offers = db
+type ScoredOffer = { techSlugs: string[] };
+type ScoredSignal = { kind: string; value: number | null };
+
+function pushTo<T>(map: Map<string, T[]>, key: string, value: T): void {
+  const arr = map.get(key);
+  if (arr) arr.push(value);
+  else map.set(key, [value]);
+}
+
+function offerTechSlugs(offer: { title: string; description: string | null }): string[] {
+  return detectTechs(`${offer.title}\n${offer.description ?? ''}`, TAGS, 0.8).map((d) => d.slug);
+}
+
+function activeOfferTechs(db: Db, siren: string): ScoredOffer[] {
+  return db
     .select({ title: jobOffers.title, description: jobOffers.description })
     .from(jobOffers)
-    .where(and(eq(jobOffers.siren, company.siren), eq(jobOffers.isActive, true)))
-    .all();
-  const sig = db
-    .select({ kind: signals.kind, value: signals.value })
-    .from(signals)
-    .where(eq(signals.siren, company.siren))
-    .all();
+    .where(and(eq(jobOffers.siren, siren), eq(jobOffers.isActive, true)))
+    .all()
+    .map((o) => ({ techSlugs: offerTechSlugs(o) }));
+}
+
+/** Score pur : aucune requête, toutes les données sont fournies par l'appelant. */
+function scoreFromParts(
+  profile: Profile,
+  company: Pick<Company, 'headcountRange'>,
+  distanceKm: number,
+  techs: { tagSlug: string; confidence: number }[],
+  offers: ScoredOffer[],
+  sig: ScoredSignal[],
+): ScoreResult {
   return scoreCompany(
     { skills: profile.skills, radiusKm: profile.radiusKm, headcountRanges: profile.headcountRanges },
     {
       headcountRange: company.headcountRange,
       techs: techs.map((t) => ({ slug: t.tagSlug, confidence: t.confidence })),
-      activeOffers: offers.map((o) => ({
-        techSlugs: detectTechs(`${o.title}\n${o.description ?? ''}`, tags, 0.8).map((d) => d.slug),
-      })),
+      activeOffers: offers,
       signals: sig,
     },
     distanceKm,
@@ -135,15 +148,25 @@ export function listCompanies(db: Db, profile: Profile, filters: Filters): Compa
     .from(companyTech)
     .all();
   const techBySiren = new Map<string, { tagSlug: string; confidence: number }[]>();
-  for (const r of techRows) techBySiren.set(r.siren, [...(techBySiren.get(r.siren) ?? []), r]);
-  const recruitingSirens = new Set(
-    db
-      .select({ siren: jobOffers.siren })
-      .from(jobOffers)
-      .where(and(eq(jobOffers.isActive, true), isNotNull(jobOffers.siren)))
-      .all()
-      .map((r) => r.siren as string),
-  );
+  for (const r of techRows) pushTo(techBySiren, r.siren, r);
+  // Offres actives et signaux chargés en une fois ; les technos de chaque offre sont détectées une seule fois.
+  const inRadiusSirens = new Set(inRadius.map((c) => c.siren));
+  const offersBySiren = new Map<string, ScoredOffer[]>();
+  const activeOffers = db
+    .select({ siren: jobOffers.siren, title: jobOffers.title, description: jobOffers.description })
+    .from(jobOffers)
+    .where(and(eq(jobOffers.isActive, true), isNotNull(jobOffers.siren)))
+    .all();
+  for (const o of activeOffers) {
+    const siren = o.siren as string;
+    if (inRadiusSirens.has(siren)) pushTo(offersBySiren, siren, { techSlugs: offerTechSlugs(o) });
+  }
+  const signalsBySiren = new Map<string, ScoredSignal[]>();
+  for (const s of db
+    .select({ siren: signals.siren, kind: signals.kind, value: signals.value })
+    .from(signals)
+    .all())
+    pushTo(signalsBySiren, s.siren, { kind: s.kind, value: s.value });
   const statusBySiren = new Map(
     db
       .select({ siren: companyStatus.siren, status: companyStatus.status })
@@ -158,25 +181,25 @@ export function listCompanies(db: Db, profile: Profile, filters: Filters): Compa
   for (const c of inRadius) {
     const techs = techBySiren.get(c.siren) ?? [];
     const status = statusBySiren.get(c.siren) ?? 'to_review';
-    const recruiting = recruitingSirens.has(c.siren);
+    const offers = offersBySiren.get(c.siren) ?? [];
+    const recruiting = offers.length > 0;
     if (filters.techs.length > 0 && !filters.techs.every((slug) => techs.some((t) => t.tagSlug === slug)))
       continue;
     if (filters.headcount.length > 0 && !filters.headcount.includes(c.headcountRange ?? '')) continue;
     if (filters.recruiting && !recruiting) continue;
     if (filters.status && status !== filters.status) continue;
     if (q && !`${c.name} ${c.legalName} ${c.city ?? ''}`.toLowerCase().includes(q)) continue;
-    const { distanceKm, ...company } = c;
     items.push({
       siren: c.siren,
       name: c.name,
       city: c.city,
       latitude: c.latitude,
       longitude: c.longitude,
-      distanceKm,
+      distanceKm: c.distanceKm,
       headcountRange: c.headcountRange,
       topTechs: bestTechs(techs).slice(0, 3),
       recruiting,
-      score: scoreFor(db, profile, company, distanceKm, techs).score,
+      score: scoreFromParts(profile, c, c.distanceKm, techs, offers, signalsBySiren.get(c.siren) ?? []).score,
       status,
     });
   }
@@ -305,7 +328,7 @@ export function getCompanyDetail(db: Db, profile: Profile, siren: string): Compa
     techGroups,
     activeOffers,
     signals: sig,
-    score: scoreFor(db, profile, company, distanceKm, techRows),
+    score: scoreFromParts(profile, company, distanceKm, techRows, activeOfferTechs(db, siren), sig),
     status: status?.status ?? 'to_review',
     notes: status?.notes ?? '',
     links: {
