@@ -4,19 +4,18 @@ export function sleep(ms: number): Promise<void> {
 
 export type Limiter = <T>(fn: () => Promise<T>) => Promise<T>;
 
-/** Sérialise les appels et impose un intervalle minimal de 1000/perSecond ms entre deux départs. */
+/** Espace les départs d'au moins 1000/perSecond ms ; n'attend pas la fin des appels. */
 export function createLimiter(perSecond: number): Limiter {
   const interval = 1000 / perSecond;
   let last = 0;
-  let queue: Promise<unknown> = Promise.resolve();
+  let queue: Promise<void> = Promise.resolve();
   return <T>(fn: () => Promise<T>): Promise<T> => {
-    const next = queue.then(async () => {
+    const start = queue.then(async () => {
       const wait = last + interval - Date.now();
       if (wait > 0) await sleep(wait);
       last = Date.now();
-      return fn();
     });
-    queue = next.catch(() => undefined);
-    return next;
+    queue = start;
+    return start.then(fn);
   };
 }

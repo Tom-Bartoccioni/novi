@@ -17,9 +17,10 @@ export function revenueGrowth(
     .filter(([, v]) => typeof v.ca === 'number' && v.ca !== null)
     .map(([y, v]) => [y, v.ca as number] as const)
     .sort((a, b) => a[0].localeCompare(b[0]));
-  if (years.length < 2) return null;
-  const [prevYear, prev] = years[years.length - 2]!;
-  const [lastYear, last] = years[years.length - 1]!;
+  const [previous, latest] = years.slice(-2);
+  if (!previous || !latest) return null;
+  const [prevYear, prev] = previous;
+  const [lastYear, last] = latest;
   if (prev <= 0) return null;
   return { percent: Math.round(((last - prev) / prev) * 100), years: [prevYear, lastYear] };
 }
