@@ -1,10 +1,18 @@
 import type { NewCompany } from '@novi/db';
 import { z } from 'zod';
 import { fetchJson } from '../lib/http';
+import { warn } from '../lib/logger';
 import { createLimiter } from '../lib/rate-limit';
 
 const BASE_URL = 'https://recherche-entreprises.api.gouv.fr/search';
 export const PER_PAGE = 25;
+/** L'API refuse d'aller au-delà de 10 000 résultats par requête. */
+export const MAX_PAGE = Math.floor(10_000 / PER_PAGE);
+
+/** Dernière page lisible pour une recherche de totalPages pages. */
+export function lastPage(totalPages: number): number {
+  return Math.min(totalPages, MAX_PAGE);
+}
 
 const numberish = z
   .union([z.number(), z.string()])
@@ -90,8 +98,13 @@ export async function* iterateSearch(params: {
   let page = 1;
   for (;;) {
     const result = await fetchSearchPage({ ...params, page });
+    if (page === 1 && result.total_pages > MAX_PAGE) {
+      warn(
+        `SIRENE : ${result.total_results} résultats, seuls les ${MAX_PAGE * PER_PAGE} premiers seront lus (affiner les tranches d'effectif)`,
+      );
+    }
     for (const r of result.results) yield r;
-    if (page >= result.total_pages || result.results.length === 0) return;
+    if (page >= lastPage(result.total_pages) || result.results.length === 0) return;
     page += 1;
   }
 }
