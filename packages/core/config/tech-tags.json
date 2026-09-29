@@ -10,7 +10,7 @@
     "slug": "javascript",
     "label": "JavaScript",
     "category": "language",
-    "aliases": ["javascript", "js", "ecmascript"],
+    "aliases": ["javascript", "ecmascript"],
     "contextRequired": [
       "javascript",
       "front",
@@ -312,6 +312,20 @@
     "label": "Vite",
     "category": "tool",
     "aliases": ["vite", "vitejs"],
+    "contextRequired": [
+      "vite.js",
+      "vitejs",
+      "vite build",
+      "bundler",
+      "front",
+      "react",
+      "vue",
+      "svelte",
+      "typescript",
+      "javascript",
+      "tooling",
+      "build"
+    ],
     "fingerprints": ["/@vite/", "vite/modulepreload"]
   },
   {
@@ -463,7 +477,7 @@
     "label": "Webflow",
     "category": "tool",
     "aliases": ["webflow"],
-    "fingerprints": ["generator\" content=\"webflow", "webflow.js", "w-nav"]
+    "fingerprints": ["generator\" content=\"webflow", "webflow.js", "w-nav-brand", "data-wf-site"]
   },
   {
     "slug": "wix",
@@ -611,8 +625,7 @@
     "slug": "linux",
     "label": "Linux",
     "category": "tool",
-    "aliases": ["linux", "debian", "ubuntu"],
-    "fingerprints": ["server: nginx", "server: apache"]
+    "aliases": ["linux", "debian", "ubuntu"]
   },
   {
     "slug": "nginx",
@@ -929,7 +942,6 @@
       "application web",
       "applications web",
       "web app",
-      "site web",
       "front-end",
       "frontend",
       "back-end",
