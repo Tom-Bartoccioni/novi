@@ -1,0 +1,27 @@
+{
+  "name": "@novi/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "generate": "drizzle-kit generate",
+    "migrate": "tsx src/migrate.ts",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@novi/core": "workspace:*",
+    "better-sqlite3": "^13.0.3",
+    "dotenv": "^18.0.4",
+    "drizzle-orm": "^0.45.3"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^9.6.0",
+    "drizzle-kit": "^0.31.11",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.2"
+  }
+}
