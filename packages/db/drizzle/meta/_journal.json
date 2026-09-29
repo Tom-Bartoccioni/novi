@@ -8,6 +8,13 @@
       "when": 1790714391675,
       "tag": "0000_mean_sleeper",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1790722988367,
+      "tag": "0001_giant_taskmaster",
+      "breakpoints": true
     }
   ]
 }

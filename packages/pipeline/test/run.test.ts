@@ -1,4 +1,5 @@
-import { crawlRuns, createDb, migrateAndSeed } from '@novi/db';
+import { crawlRuns, createDb, migrateAndSeed, techTags } from '@novi/db';
+import { eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 import { withRun } from '../src/lib/run';
 
@@ -30,5 +31,13 @@ describe('withRun', () => {
     const row = db.select().from(crawlRuns).get();
     expect(row?.finishedAt).toBeTruthy();
     expect(row?.errors).toEqual([{ message: 'fatal' }]);
+  });
+  it('synchronises the tech tags dictionary before the run starts', async () => {
+    const db = createDb(':memory:');
+    migrateAndSeed(db);
+    db.delete(techTags).where(eq(techTags.slug, 'react')).run();
+    expect(db.select().from(techTags).where(eq(techTags.slug, 'react')).get()).toBeUndefined();
+    await withRun(db, 'test', {}, async () => {});
+    expect(db.select().from(techTags).where(eq(techTags.slug, 'react')).get()?.label).toBe('React');
   });
 });
