@@ -40,7 +40,8 @@ program
   .option('--force', 'retraiter les sites déjà trouvés automatiquement')
   .option('--limit <n>', 'nombre max', Number)
   .option('--siren <siren>', 'une seule entreprise')
-  .action(async (opts: { force?: boolean; limit?: number; siren?: string }) => {
+  .option('--concurrency <n>', 'entreprises traitées en parallèle', Number, 5)
+  .action(async (opts: { force?: boolean; limit?: number; siren?: string; concurrency?: number }) => {
     await discoverWebsites(getDb(), opts);
   });
 program
