@@ -114,7 +114,7 @@ export function matchOffres(db: Db, opts: MatchOffresOptions): Promise<RunResult
         ctx.stats.matched += 1;
         ctx.stats.updated += 1;
       } catch (err) {
-        ctx.error(undefined, err);
+        ctx.error(offer.id, err);
       }
     }
   });

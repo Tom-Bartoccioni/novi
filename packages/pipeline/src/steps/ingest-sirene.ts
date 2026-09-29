@@ -3,7 +3,12 @@ import { companies, type Db } from '@novi/db';
 import { eq } from 'drizzle-orm';
 import { log } from '../lib/logger';
 import { type RunResult, withRun } from '../lib/run';
-import { iterateSearch, type SearchResult, toCompanyRow } from '../sources/recherche-entreprises';
+import {
+  hasLocalEstablishment,
+  iterateSearch,
+  type SearchResult,
+  toCompanyRow,
+} from '../sources/recherche-entreprises';
 
 export type IngestSireneOptions = {
   departement: string;
@@ -30,13 +35,19 @@ export function ingestSirene(db: Db, opts: IngestSireneOptions): Promise<RunResu
     'ingest sirene',
     { departement: opts.departement, limit: opts.limit ?? null },
     async (ctx) => {
+      ctx.stats.skipped = 0;
+      ctx.stats.skippedNoLocal = 0;
+      ctx.stats.skippedNoCoords = 0;
       for await (const result of iterate()) {
         if (opts.limit !== undefined && ctx.stats.processed >= opts.limit) break;
         ctx.stats.processed += 1;
         try {
           const row = toCompanyRow(result, opts.departement, config.nafLabels);
           if (!row) {
-            ctx.stats.skipped = (ctx.stats.skipped ?? 0) + 1;
+            ctx.stats.skipped += 1;
+            // Soit rien dans le département, soit des établissements sans coordonnées exploitables.
+            if (hasLocalEstablishment(result, opts.departement)) ctx.stats.skippedNoCoords += 1;
+            else ctx.stats.skippedNoLocal += 1;
             continue;
           }
           const exists = db

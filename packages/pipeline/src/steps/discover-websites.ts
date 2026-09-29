@@ -7,7 +7,13 @@ import { fetchText } from '../lib/http';
 import { log, warn } from '../lib/logger';
 import { createLimiter } from '../lib/rate-limit';
 import { type RunResult, withRun } from '../lib/run';
-import { type BBox, fetchOsmBusinesses, matchOsmBusiness, type OsmBusiness } from '../sources/overpass';
+import {
+  type BBox,
+  fetchOsmBusinesses,
+  matchOsmBusiness,
+  normalizeWebsite,
+  type OsmBusiness,
+} from '../sources/overpass';
 
 const TLDS = ['com', 'fr', 'io', 'eu', 'tech'];
 
@@ -189,7 +195,9 @@ export function discoverWebsites(db: Db, opts: DiscoverOptions): Promise<RunResu
                 confidence: number;
               } | null = null;
               const fromOffer = offerUrls.get(c.siren);
-              if (fromOffer) found = { website: fromOffer, source: 'offre', confidence: 0.9 };
+              const offerSite = fromOffer ? normalizeWebsite(fromOffer) : null;
+              if (offerSite)
+                found = { website: stripTrailingSlash(offerSite), source: 'offre', confidence: 0.9 };
               if (!found) {
                 const b = matchOsmBusiness(c, osm);
                 if (b) found = { website: b.website, source: 'osm', confidence: 0.8 };

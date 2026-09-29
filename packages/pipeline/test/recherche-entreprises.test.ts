@@ -41,6 +41,21 @@ describe('pickLocalEstablishment', () => {
     expect(picked?.siret.startsWith(outside.siren)).toBe(true);
     expect(picked?.latitude).toBeGreaterThan(43);
   });
+  it('falls back to a local establishment with coordinates when the head office in zone has none', () => {
+    const outside = page.results.find((r) => r.matching_etablissements[0]?.etat_administratif === 'A');
+    if (!outside) throw new Error('fixture sans établissement actif');
+    const local = outside.matching_etablissements[0];
+    if (!local) throw new Error('fixture sans établissement');
+    const inZoneNoCoords = {
+      ...outside,
+      siege: { ...local, siret: `${outside.siren}00000`, est_siege: true, latitude: null, longitude: null },
+      matching_etablissements: [local],
+    };
+    const picked = pickLocalEstablishment(inZoneNoCoords, '06');
+    expect(picked?.siret).toBe(local.siret);
+    expect(picked?.latitude).toBe(local.latitude);
+    expect(picked?.headquartersInZone).toBe(true);
+  });
   it('returns null when nothing is in the department', () => {
     const first = page.results[0];
     if (!first) throw new Error('fixture vide');

@@ -261,13 +261,37 @@ export function analyzeSite(baseUrl: string, pages: TextPage[]): SiteAnalysis {
 }
 
 export type CrawlDeps = {
-  fetchPage?: (url: string) => Promise<TextPage | null>;
+  fetchPage?: (url: string, timeoutMs?: number) => Promise<TextPage | null>;
   robotsAllowed?: (url: string) => Promise<boolean>;
+  /** Durée maximale du crawl d'un site : passé ce délai, on n'ouvre plus de page et on analyse ce qu'on a. */
+  deadlineMs?: number;
 };
 
-async function defaultFetchPage(url: string): Promise<TextPage | null> {
+const PAGE_TIMEOUT_MS = 10_000;
+/** Délai par défaut pour un site en mode batch (12 pages, 1 s de pause entre chacune). */
+export const DEFAULT_CRAWL_DEADLINE_MS = 90_000;
+
+/** Hôtes vers lesquels un « site » redirige quand l'entreprise n'a en fait pas de site propre. */
+const REDIRECT_BLOCKLIST = [
+  'facebook.com',
+  'linkedin.com',
+  'instagram.com',
+  'x.com',
+  'twitter.com',
+  'youtube.com',
+  'wixsite.com',
+  'google.com',
+  'pagesjaunes.fr',
+  'societe.com',
+];
+
+function bareHost(url: string): string {
+  return new URL(url).hostname.toLowerCase().replace(/^www\./, '');
+}
+
+async function defaultFetchPage(url: string, timeoutMs = PAGE_TIMEOUT_MS): Promise<TextPage | null> {
   try {
-    const page = await fetchText(url, { timeoutMs: 10_000, maxBytes: 2_000_000 });
+    const page = await fetchText(url, { timeoutMs, maxBytes: 2_000_000 });
     if (page.status >= 400 || !page.contentType.includes('html')) return null;
     return page;
   } catch {
@@ -300,16 +324,29 @@ export async function crawlCompany(db: Db, siren: string, deps: CrawlDeps = {}):
   if (!company.website) throw new Error(`Pas de site web pour ${company.name}`);
   const baseUrl = company.website.replace(/\/$/, '');
   if (!(await robotsAllowed(baseUrl))) throw new Error(`robots.txt interdit le crawl de ${baseUrl}`);
-  const home = await fetchPage(baseUrl);
+  const deadline = deps.deadlineMs === undefined ? null : Date.now() + deps.deadlineMs;
+  const pageTimeout = () =>
+    deadline === null ? PAGE_TIMEOUT_MS : Math.max(0, Math.min(PAGE_TIMEOUT_MS, deadline - Date.now()));
+  const home = await fetchPage(baseUrl, pageTimeout());
   if (!home) throw new Error(`Page d'accueil inaccessible : ${baseUrl}`);
+  const finalHost = bareHost(home.url);
+  if (
+    finalHost !== bareHost(baseUrl) &&
+    REDIRECT_BLOCKLIST.some((h) => finalHost === h || finalHost.endsWith(`.${h}`))
+  )
+    throw new Error(`Le site redirige vers ${finalHost}, ignoré`);
   // Base effective : l'origine finale après redirections (ex. https://x.com -> https://www.x.com).
   const siteBase = new URL(home.url).origin;
   const pages: TextPage[] = [home];
   const links = extractLinks(home.body, siteBase);
   for (const url of selectPages(siteBase, links.internal, links.anchors).slice(1)) {
+    if (deadline !== null && Date.now() >= deadline) {
+      log(`${siteBase} : délai dépassé, analyse sur ${pages.length} page(s)`);
+      break;
+    }
     if (deps.fetchPage === undefined) await sleep(1000);
     if (!(await robotsAllowed(url))) continue;
-    const p = await fetchPage(url);
+    const p = await fetchPage(url, pageTimeout());
     if (p) pages.push(p);
   }
   const analysis = analyzeSite(siteBase, pages);
@@ -368,7 +405,10 @@ export function crawlWebsites(db: Db, opts: CrawlOptions): Promise<RunResult> {
           limit(async () => {
             ctx.stats.processed += 1;
             try {
-              const a = await crawlCompany(db, t.siren, opts);
+              const a = await crawlCompany(db, t.siren, {
+                ...opts,
+                deadlineMs: opts.deadlineMs ?? DEFAULT_CRAWL_DEADLINE_MS,
+              });
               ctx.stats.updated += 1;
               log(
                 `${t.name} : ${a.detections.length} technos${a.careersUrl ? ', page carrière' : ''}${a.esnEvidence ? ', ESN ?' : ''}`,

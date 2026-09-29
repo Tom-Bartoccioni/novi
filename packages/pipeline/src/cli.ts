@@ -29,6 +29,7 @@ ingest
 
 program
   .command('match')
+  .description("Rattachement des offres d'emploi aux entreprises")
   .command('offres')
   .option('--force', 'retraiter aussi les offres déjà rattachées (ne détache jamais)')
   .action(async (opts: { force?: boolean }) => {
@@ -36,6 +37,7 @@ program
   });
 program
   .command('discover')
+  .description('Recherche du site web des entreprises')
   .command('websites')
   .option('--force', 'retraiter les sites déjà trouvés automatiquement')
   .option('--limit <n>', 'nombre max', Number)
@@ -46,6 +48,7 @@ program
   });
 program
   .command('crawl')
+  .description('Analyse des sites web des entreprises')
   .command('websites')
   .option('--force', 'réanalyser même si crawlé il y a moins de 30 jours')
   .option('--limit <n>', 'nombre max', Number)
@@ -56,6 +59,7 @@ program
   });
 program
   .command('enrich')
+  .description('Enrichissement des entreprises par des sources externes')
   .command('github')
   .option('--limit <n>', 'nombre max', Number)
   .option('--siren <siren>', 'une seule entreprise')
@@ -70,6 +74,7 @@ program
   });
 program
   .command('run')
+  .description('Enchaînement complet des étapes du pipeline')
   .command('all')
   .option('-d, --departement <code>', 'département', '06')
   .action(async (opts: { departement: string }) => {
