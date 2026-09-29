@@ -1,0 +1,910 @@
+[
+  {
+    "slug": "typescript",
+    "label": "TypeScript",
+    "category": "language",
+    "aliases": ["typescript", "ts"],
+    "contextRequired": ["typescript", "javascript", "node", "react", "angular", "vue", "front"]
+  },
+  {
+    "slug": "javascript",
+    "label": "JavaScript",
+    "category": "language",
+    "aliases": ["javascript", "js", "ecmascript"],
+    "contextRequired": [
+      "javascript",
+      "front",
+      "web",
+      "node",
+      "react",
+      "vue",
+      "angular",
+      "développeur",
+      "developer",
+      "développeuse"
+    ]
+  },
+  { "slug": "python", "label": "Python", "category": "language", "aliases": ["python"] },
+  { "slug": "java", "label": "Java", "category": "language", "aliases": ["java"] },
+  { "slug": "kotlin", "label": "Kotlin", "category": "language", "aliases": ["kotlin"] },
+  { "slug": "scala", "label": "Scala", "category": "language", "aliases": ["scala"] },
+  { "slug": "csharp", "label": "C#", "category": "language", "aliases": ["c#", "csharp", "c sharp"] },
+  {
+    "slug": "dotnet",
+    "label": ".NET",
+    "category": "framework",
+    "aliases": [".net", "dotnet", "asp.net", "aspnet"],
+    "fingerprints": ["x-powered-by: asp.net", "__viewstate", "x-aspnet-version"]
+  },
+  { "slug": "cpp", "label": "C++", "category": "language", "aliases": ["c++", "cpp"] },
+  {
+    "slug": "c",
+    "label": "C",
+    "category": "language",
+    "aliases": ["c"],
+    "contextRequired": [
+      "langage c",
+      "c language",
+      "c/c++",
+      "c embarqué",
+      "embedded c",
+      "ansi c",
+      "développeur c",
+      "c developer"
+    ]
+  },
+  {
+    "slug": "go",
+    "label": "Go",
+    "category": "language",
+    "aliases": ["golang", "go"],
+    "contextRequired": [
+      "golang",
+      "langage go",
+      "go language",
+      "développeur go",
+      "go developer",
+      "en go",
+      "in go",
+      "go/",
+      "/go"
+    ]
+  },
+  {
+    "slug": "rust",
+    "label": "Rust",
+    "category": "language",
+    "aliases": ["rust"],
+    "contextRequired": [
+      "rust",
+      "cargo",
+      "wasm",
+      "développeur",
+      "developer",
+      "langage",
+      "language",
+      "backend",
+      "systems"
+    ]
+  },
+  {
+    "slug": "php",
+    "label": "PHP",
+    "category": "language",
+    "aliases": ["php"],
+    "fingerprints": ["x-powered-by: php", "phpsessid"]
+  },
+  { "slug": "ruby", "label": "Ruby", "category": "language", "aliases": ["ruby"] },
+  {
+    "slug": "rails",
+    "label": "Ruby on Rails",
+    "category": "framework",
+    "aliases": ["ruby on rails", "rails", "ror"],
+    "fingerprints": ["csrf-param", "x-powered-by: phusion passenger"]
+  },
+  {
+    "slug": "swift",
+    "label": "Swift",
+    "category": "language",
+    "aliases": ["swift"],
+    "contextRequired": ["ios", "apple", "swiftui", "xcode", "macos", "développeur", "developer", "mobile"]
+  },
+  {
+    "slug": "objective-c",
+    "label": "Objective-C",
+    "category": "language",
+    "aliases": ["objective-c", "objective c", "objc"]
+  },
+  {
+    "slug": "dart",
+    "label": "Dart",
+    "category": "language",
+    "aliases": ["dart"],
+    "contextRequired": ["flutter", "dart language", "langage dart", "mobile"]
+  },
+  { "slug": "flutter", "label": "Flutter", "category": "framework", "aliases": ["flutter"] },
+  { "slug": "elixir", "label": "Elixir", "category": "language", "aliases": ["elixir"] },
+  {
+    "slug": "phoenix",
+    "label": "Phoenix",
+    "category": "framework",
+    "aliases": ["phoenix framework", "phoenix liveview", "liveview"],
+    "fingerprints": ["phx-", "phoenix_html"]
+  },
+  { "slug": "erlang", "label": "Erlang", "category": "language", "aliases": ["erlang"] },
+  { "slug": "haskell", "label": "Haskell", "category": "language", "aliases": ["haskell"] },
+  { "slug": "ocaml", "label": "OCaml", "category": "language", "aliases": ["ocaml"] },
+  { "slug": "clojure", "label": "Clojure", "category": "language", "aliases": ["clojure", "clojurescript"] },
+  {
+    "slug": "r",
+    "label": "R",
+    "category": "language",
+    "aliases": ["r"],
+    "contextRequired": ["langage r", "r language", "r studio", "rstudio", "tidyverse", "shiny", "statisti"]
+  },
+  {
+    "slug": "julia",
+    "label": "Julia",
+    "category": "language",
+    "aliases": ["julia"],
+    "contextRequired": [
+      "julia language",
+      "langage julia",
+      "julialang",
+      "scientifique",
+      "scientific",
+      "numerical"
+    ]
+  },
+  { "slug": "matlab", "label": "MATLAB", "category": "language", "aliases": ["matlab", "simulink"] },
+  { "slug": "sql", "label": "SQL", "category": "language", "aliases": ["sql"] },
+  {
+    "slug": "bash",
+    "label": "Shell",
+    "category": "language",
+    "aliases": ["bash", "shell script", "scripting shell"]
+  },
+  {
+    "slug": "zig",
+    "label": "Zig",
+    "category": "language",
+    "aliases": ["zig"],
+    "contextRequired": ["ziglang", "zig language", "langage zig", "systems", "développeur", "developer"]
+  },
+  { "slug": "webassembly", "label": "WebAssembly", "category": "tool", "aliases": ["webassembly", "wasm"] },
+  {
+    "slug": "react",
+    "label": "React",
+    "category": "framework",
+    "aliases": ["react", "reactjs", "react.js"],
+    "fingerprints": ["data-reactroot", "react-dom", "__react", "data-reactid"]
+  },
+  {
+    "slug": "nextjs",
+    "label": "Next.js",
+    "category": "framework",
+    "aliases": ["next.js", "nextjs", "next js"],
+    "fingerprints": ["__next", "_next/static", "x-powered-by: next.js"]
+  },
+  {
+    "slug": "remix",
+    "label": "Remix",
+    "category": "framework",
+    "aliases": ["remix"],
+    "contextRequired": ["remix run", "remix.run", "react", "framework", "remix js"],
+    "fingerprints": ["__remixcontext", "__remixmanifest"]
+  },
+  {
+    "slug": "vue",
+    "label": "Vue.js",
+    "category": "framework",
+    "aliases": ["vue", "vue.js", "vuejs"],
+    "fingerprints": ["data-v-app", "__vue__", "data-v-"]
+  },
+  {
+    "slug": "nuxt",
+    "label": "Nuxt",
+    "category": "framework",
+    "aliases": ["nuxt", "nuxt.js", "nuxtjs"],
+    "fingerprints": ["_nuxt/", "__nuxt", "data-nuxt"]
+  },
+  {
+    "slug": "angular",
+    "label": "Angular",
+    "category": "framework",
+    "aliases": ["angular", "angularjs"],
+    "fingerprints": ["ng-version", "ng-app", "app-root"]
+  },
+  {
+    "slug": "svelte",
+    "label": "Svelte",
+    "category": "framework",
+    "aliases": ["svelte", "sveltekit", "svelte kit"],
+    "fingerprints": ["data-sveltekit", "svelte-", "__sveltekit"]
+  },
+  {
+    "slug": "solid",
+    "label": "SolidJS",
+    "category": "framework",
+    "aliases": ["solidjs", "solid.js", "solid js"]
+  },
+  {
+    "slug": "astro",
+    "label": "Astro",
+    "category": "framework",
+    "aliases": ["astro"],
+    "contextRequired": ["astro.build", "astro framework", "static site", "site statique", "front", "web"],
+    "fingerprints": ["astro-island", "generator\" content=\"astro"]
+  },
+  {
+    "slug": "qwik",
+    "label": "Qwik",
+    "category": "framework",
+    "aliases": ["qwik"],
+    "fingerprints": ["q:container"]
+  },
+  {
+    "slug": "htmx",
+    "label": "htmx",
+    "category": "framework",
+    "aliases": ["htmx"],
+    "fingerprints": ["hx-get", "hx-post", "htmx.org"]
+  },
+  {
+    "slug": "alpinejs",
+    "label": "Alpine.js",
+    "category": "framework",
+    "aliases": ["alpine.js", "alpinejs"],
+    "fingerprints": ["x-data=", "alpinejs"]
+  },
+  {
+    "slug": "jquery",
+    "label": "jQuery",
+    "category": "framework",
+    "aliases": ["jquery"],
+    "fingerprints": ["jquery.min.js", "jquery-"]
+  },
+  {
+    "slug": "tailwind",
+    "label": "Tailwind CSS",
+    "category": "tool",
+    "aliases": ["tailwind", "tailwindcss", "tailwind css"],
+    "fingerprints": ["tailwindcss", "--tw-"]
+  },
+  {
+    "slug": "bootstrap",
+    "label": "Bootstrap",
+    "category": "tool",
+    "aliases": ["bootstrap"],
+    "contextRequired": ["css", "bootstrap 4", "bootstrap 5", "front", "web"],
+    "fingerprints": ["bootstrap.min.css", "bootstrap.min.js"]
+  },
+  {
+    "slug": "vite",
+    "label": "Vite",
+    "category": "tool",
+    "aliases": ["vite", "vitejs"],
+    "fingerprints": ["/@vite/", "vite/modulepreload"]
+  },
+  {
+    "slug": "webpack",
+    "label": "webpack",
+    "category": "tool",
+    "aliases": ["webpack"],
+    "fingerprints": ["webpackjsonp", "webpack_require"]
+  },
+  { "slug": "storybook", "label": "Storybook", "category": "tool", "aliases": ["storybook"] },
+  {
+    "slug": "threejs",
+    "label": "Three.js",
+    "category": "framework",
+    "aliases": ["three.js", "threejs", "webgl"],
+    "fingerprints": ["three.module.js", "three.min.js"]
+  },
+  {
+    "slug": "nodejs",
+    "label": "Node.js",
+    "category": "framework",
+    "aliases": ["node.js", "nodejs", "node js", "node"],
+    "contextRequired": [
+      "node.js",
+      "nodejs",
+      "node js",
+      "javascript",
+      "typescript",
+      "backend",
+      "express",
+      "npm"
+    ],
+    "fingerprints": ["x-powered-by: express"]
+  },
+  {
+    "slug": "express",
+    "label": "Express",
+    "category": "framework",
+    "aliases": ["express.js", "expressjs", "express"],
+    "contextRequired": ["node", "express.js", "expressjs", "javascript", "api", "backend"]
+  },
+  {
+    "slug": "nestjs",
+    "label": "NestJS",
+    "category": "framework",
+    "aliases": ["nestjs", "nest.js", "nest js"]
+  },
+  { "slug": "fastify", "label": "Fastify", "category": "framework", "aliases": ["fastify"] },
+  {
+    "slug": "hono",
+    "label": "Hono",
+    "category": "framework",
+    "aliases": ["hono"],
+    "contextRequired": ["hono.dev", "honojs", "typescript", "edge", "cloudflare", "framework"]
+  },
+  {
+    "slug": "bun",
+    "label": "Bun",
+    "category": "tool",
+    "aliases": ["bun"],
+    "contextRequired": ["bun.sh", "bunjs", "runtime", "javascript", "typescript", "node"]
+  },
+  { "slug": "deno", "label": "Deno", "category": "tool", "aliases": ["deno"] },
+  {
+    "slug": "graphql",
+    "label": "GraphQL",
+    "category": "tool",
+    "aliases": ["graphql", "apollo"],
+    "fingerprints": ["/graphql"]
+  },
+  { "slug": "trpc", "label": "tRPC", "category": "framework", "aliases": ["trpc"] },
+  {
+    "slug": "django",
+    "label": "Django",
+    "category": "framework",
+    "aliases": ["django"],
+    "fingerprints": ["csrfmiddlewaretoken", "csrftoken"]
+  },
+  { "slug": "flask", "label": "Flask", "category": "framework", "aliases": ["flask"] },
+  { "slug": "fastapi", "label": "FastAPI", "category": "framework", "aliases": ["fastapi", "fast api"] },
+  {
+    "slug": "spring",
+    "label": "Spring",
+    "category": "framework",
+    "aliases": ["spring boot", "spring", "springboot"],
+    "contextRequired": ["java", "spring boot", "springboot", "spring framework", "backend", "kotlin"],
+    "fingerprints": ["jsessionid"]
+  },
+  { "slug": "quarkus", "label": "Quarkus", "category": "framework", "aliases": ["quarkus"] },
+  {
+    "slug": "symfony",
+    "label": "Symfony",
+    "category": "framework",
+    "aliases": ["symfony"],
+    "fingerprints": ["x-debug-token", "_symfony"]
+  },
+  {
+    "slug": "laravel",
+    "label": "Laravel",
+    "category": "framework",
+    "aliases": ["laravel"],
+    "fingerprints": ["laravel_session", "x-powered-by: laravel"]
+  },
+  {
+    "slug": "wordpress",
+    "label": "WordPress",
+    "category": "tool",
+    "aliases": ["wordpress", "woocommerce"],
+    "fingerprints": ["wp-content", "wp-includes", "generator\" content=\"wordpress"]
+  },
+  {
+    "slug": "drupal",
+    "label": "Drupal",
+    "category": "tool",
+    "aliases": ["drupal"],
+    "fingerprints": ["x-generator: drupal", "drupal-settings-json", "/sites/default/files"]
+  },
+  {
+    "slug": "prestashop",
+    "label": "PrestaShop",
+    "category": "tool",
+    "aliases": ["prestashop"],
+    "fingerprints": ["prestashop", "/modules/ps_"]
+  },
+  {
+    "slug": "magento",
+    "label": "Magento",
+    "category": "tool",
+    "aliases": ["magento", "adobe commerce"],
+    "fingerprints": ["mage/cookies", "magento"]
+  },
+  {
+    "slug": "shopify",
+    "label": "Shopify",
+    "category": "tool",
+    "aliases": ["shopify"],
+    "fingerprints": ["cdn.shopify.com", "shopify.theme"]
+  },
+  {
+    "slug": "webflow",
+    "label": "Webflow",
+    "category": "tool",
+    "aliases": ["webflow"],
+    "fingerprints": ["generator\" content=\"webflow", "webflow.js", "w-nav"]
+  },
+  {
+    "slug": "wix",
+    "label": "Wix",
+    "category": "tool",
+    "aliases": ["wix"],
+    "contextRequired": ["wix.com", "site wix", "wix site"],
+    "fingerprints": ["x-wix-request-id", "static.wixstatic.com", "generator\" content=\"wix"]
+  },
+  {
+    "slug": "postgresql",
+    "label": "PostgreSQL",
+    "category": "database",
+    "aliases": ["postgresql", "postgres", "postgre", "pgsql"]
+  },
+  { "slug": "mysql", "label": "MySQL", "category": "database", "aliases": ["mysql", "mariadb"] },
+  { "slug": "sqlite", "label": "SQLite", "category": "database", "aliases": ["sqlite"] },
+  { "slug": "mongodb", "label": "MongoDB", "category": "database", "aliases": ["mongodb", "mongo"] },
+  { "slug": "redis", "label": "Redis", "category": "database", "aliases": ["redis", "valkey"] },
+  {
+    "slug": "elasticsearch",
+    "label": "Elasticsearch",
+    "category": "database",
+    "aliases": ["elasticsearch", "elastic search", "opensearch", "elastic stack", "elk"]
+  },
+  { "slug": "cassandra", "label": "Cassandra", "category": "database", "aliases": ["cassandra", "scylladb"] },
+  {
+    "slug": "neo4j",
+    "label": "Neo4j",
+    "category": "database",
+    "aliases": ["neo4j", "graph database", "base de données graphe"]
+  },
+  { "slug": "clickhouse", "label": "ClickHouse", "category": "database", "aliases": ["clickhouse"] },
+  {
+    "slug": "supabase",
+    "label": "Supabase",
+    "category": "database",
+    "aliases": ["supabase"],
+    "fingerprints": ["supabase.co"]
+  },
+  {
+    "slug": "firebase",
+    "label": "Firebase",
+    "category": "database",
+    "aliases": ["firebase", "firestore"],
+    "fingerprints": ["firebaseapp.com", "firebase-app.js"]
+  },
+  { "slug": "prisma", "label": "Prisma", "category": "tool", "aliases": ["prisma"] },
+  { "slug": "drizzle", "label": "Drizzle", "category": "tool", "aliases": ["drizzle", "drizzle orm"] },
+  { "slug": "kafka", "label": "Kafka", "category": "tool", "aliases": ["kafka", "apache kafka"] },
+  { "slug": "rabbitmq", "label": "RabbitMQ", "category": "tool", "aliases": ["rabbitmq", "amqp"] },
+  {
+    "slug": "aws",
+    "label": "AWS",
+    "category": "cloud",
+    "aliases": ["aws", "amazon web services", "ec2", "lambda", "s3"],
+    "contextRequired": ["aws", "amazon", "cloud", "ec2", "serverless"],
+    "fingerprints": ["amazonaws.com", "cloudfront.net", "x-amz-"]
+  },
+  {
+    "slug": "gcp",
+    "label": "Google Cloud",
+    "category": "cloud",
+    "aliases": ["google cloud", "gcp", "bigquery", "cloud run"],
+    "fingerprints": ["googleusercontent.com", "run.app"]
+  },
+  {
+    "slug": "azure",
+    "label": "Azure",
+    "category": "cloud",
+    "aliases": ["azure", "microsoft azure"],
+    "fingerprints": ["azurewebsites.net", "azureedge.net"]
+  },
+  {
+    "slug": "ovh",
+    "label": "OVHcloud",
+    "category": "cloud",
+    "aliases": ["ovh", "ovhcloud"],
+    "fingerprints": ["ovh.net"]
+  },
+  {
+    "slug": "scaleway",
+    "label": "Scaleway",
+    "category": "cloud",
+    "aliases": ["scaleway"],
+    "fingerprints": ["scw.cloud", "scaleway"]
+  },
+  {
+    "slug": "cloudflare",
+    "label": "Cloudflare",
+    "category": "cloud",
+    "aliases": ["cloudflare", "cloudflare workers"],
+    "fingerprints": ["server: cloudflare", "cf-ray"]
+  },
+  {
+    "slug": "vercel",
+    "label": "Vercel",
+    "category": "cloud",
+    "aliases": ["vercel"],
+    "fingerprints": ["server: vercel", "x-vercel-id"]
+  },
+  {
+    "slug": "netlify",
+    "label": "Netlify",
+    "category": "cloud",
+    "aliases": ["netlify"],
+    "fingerprints": ["server: netlify", "x-nf-request-id"]
+  },
+  {
+    "slug": "heroku",
+    "label": "Heroku",
+    "category": "cloud",
+    "aliases": ["heroku"],
+    "fingerprints": ["herokuapp.com"]
+  },
+  {
+    "slug": "docker",
+    "label": "Docker",
+    "category": "tool",
+    "aliases": ["docker", "conteneurs", "containers", "docker compose"]
+  },
+  {
+    "slug": "kubernetes",
+    "label": "Kubernetes",
+    "category": "tool",
+    "aliases": ["kubernetes", "k8s", "helm"]
+  },
+  {
+    "slug": "terraform",
+    "label": "Terraform",
+    "category": "tool",
+    "aliases": ["terraform", "opentofu", "infrastructure as code", "iac"]
+  },
+  { "slug": "ansible", "label": "Ansible", "category": "tool", "aliases": ["ansible"] },
+  {
+    "slug": "github-actions",
+    "label": "GitHub Actions",
+    "category": "tool",
+    "aliases": ["github actions", "github"],
+    "contextRequired": ["github actions", "github.com", "ci/cd", "ci", "workflow", "pipeline"]
+  },
+  { "slug": "gitlab", "label": "GitLab", "category": "tool", "aliases": ["gitlab", "gitlab ci"] },
+  { "slug": "jenkins", "label": "Jenkins", "category": "tool", "aliases": ["jenkins"] },
+  {
+    "slug": "linux",
+    "label": "Linux",
+    "category": "tool",
+    "aliases": ["linux", "debian", "ubuntu"],
+    "fingerprints": ["server: nginx", "server: apache"]
+  },
+  {
+    "slug": "nginx",
+    "label": "nginx",
+    "category": "tool",
+    "aliases": ["nginx"],
+    "fingerprints": ["server: nginx"]
+  },
+  { "slug": "android", "label": "Android", "category": "framework", "aliases": ["android"] },
+  { "slug": "ios", "label": "iOS", "category": "framework", "aliases": ["ios", "swiftui", "xcode"] },
+  {
+    "slug": "react-native",
+    "label": "React Native",
+    "category": "framework",
+    "aliases": ["react native", "react-native", "expo"],
+    "contextRequired": ["react native", "react-native", "mobile", "expo.dev", "ios", "android"]
+  },
+  { "slug": "tauri", "label": "Tauri", "category": "framework", "aliases": ["tauri"] },
+  {
+    "slug": "electron",
+    "label": "Electron",
+    "category": "framework",
+    "aliases": ["electron"],
+    "contextRequired": [
+      "electron.js",
+      "electronjs",
+      "desktop",
+      "application bureau",
+      "javascript",
+      "typescript"
+    ]
+  },
+  {
+    "slug": "unity",
+    "label": "Unity",
+    "category": "framework",
+    "aliases": ["unity", "unity3d"],
+    "contextRequired": ["unity3d", "jeu", "game", "3d", "moteur", "engine", "c#"]
+  },
+  {
+    "slug": "unreal",
+    "label": "Unreal Engine",
+    "category": "framework",
+    "aliases": ["unreal engine", "unreal", "ue5", "ue4"]
+  },
+  { "slug": "godot", "label": "Godot", "category": "framework", "aliases": ["godot"] },
+  {
+    "slug": "qt",
+    "label": "Qt",
+    "category": "framework",
+    "aliases": ["qt", "qml"],
+    "contextRequired": ["c++", "qml", "qt framework", "qt5", "qt6", "embarqué", "embedded", "desktop"]
+  },
+  {
+    "slug": "embedded",
+    "label": "Embarqué",
+    "category": "domain",
+    "aliases": [
+      "embarqué",
+      "embedded",
+      "firmware",
+      "microcontrôleur",
+      "microcontroller",
+      "stm32",
+      "esp32",
+      "arduino",
+      "rtos",
+      "freertos",
+      "zephyr"
+    ]
+  },
+  {
+    "slug": "iot",
+    "label": "IoT",
+    "category": "domain",
+    "aliases": [
+      "iot",
+      "internet des objets",
+      "internet of things",
+      "objets connectés",
+      "lora",
+      "lorawan",
+      "zigbee",
+      "mqtt"
+    ]
+  },
+  {
+    "slug": "machine-learning",
+    "label": "Machine learning",
+    "category": "domain",
+    "aliases": [
+      "machine learning",
+      "deep learning",
+      "apprentissage automatique",
+      "data science",
+      "intelligence artificielle",
+      "ia",
+      "ai",
+      "llm",
+      "computer vision",
+      "vision par ordinateur",
+      "nlp"
+    ]
+  },
+  { "slug": "pytorch", "label": "PyTorch", "category": "framework", "aliases": ["pytorch", "torch"] },
+  {
+    "slug": "tensorflow",
+    "label": "TensorFlow",
+    "category": "framework",
+    "aliases": ["tensorflow", "keras"]
+  },
+  {
+    "slug": "scikit-learn",
+    "label": "scikit-learn",
+    "category": "framework",
+    "aliases": ["scikit-learn", "scikit learn", "sklearn"]
+  },
+  { "slug": "pandas", "label": "pandas", "category": "framework", "aliases": ["pandas", "numpy", "polars"] },
+  {
+    "slug": "spark",
+    "label": "Spark",
+    "category": "tool",
+    "aliases": ["apache spark", "spark", "pyspark", "databricks"],
+    "contextRequired": ["apache spark", "pyspark", "databricks", "data", "big data", "hadoop"]
+  },
+  { "slug": "airflow", "label": "Airflow", "category": "tool", "aliases": ["airflow", "dagster", "prefect"] },
+  {
+    "slug": "dbt",
+    "label": "dbt",
+    "category": "tool",
+    "aliases": ["dbt"],
+    "contextRequired": ["data", "sql", "warehouse", "analytics", "snowflake", "bigquery"]
+  },
+  {
+    "slug": "snowflake",
+    "label": "Snowflake",
+    "category": "database",
+    "aliases": ["snowflake"],
+    "contextRequired": ["data", "warehouse", "cloud", "sql", "analytics"]
+  },
+  {
+    "slug": "blockchain",
+    "label": "Blockchain",
+    "category": "domain",
+    "aliases": ["blockchain", "web3", "solidity", "smart contract", "smart contracts", "ethereum"]
+  },
+  {
+    "slug": "cybersecurity",
+    "label": "Cybersécurité",
+    "category": "domain",
+    "aliases": [
+      "cybersécurité",
+      "cybersecurity",
+      "sécurité informatique",
+      "pentest",
+      "soc analyst",
+      "cryptographie",
+      "cryptography"
+    ]
+  },
+  {
+    "slug": "devops",
+    "label": "DevOps",
+    "category": "domain",
+    "aliases": ["devops", "sre", "site reliability", "platform engineering"]
+  },
+  {
+    "slug": "saas",
+    "label": "SaaS",
+    "category": "domain",
+    "aliases": ["saas", "logiciel en ligne", "plateforme saas"]
+  },
+  {
+    "slug": "fintech",
+    "label": "Fintech",
+    "category": "domain",
+    "aliases": ["fintech", "paiement", "payments", "banque en ligne", "regtech"]
+  },
+  {
+    "slug": "healthtech",
+    "label": "Santé",
+    "category": "domain",
+    "aliases": ["healthtech", "e-santé", "medtech", "santé numérique", "dispositif médical", "medical device"]
+  },
+  {
+    "slug": "gaming",
+    "label": "Jeu vidéo",
+    "category": "domain",
+    "aliases": ["jeu vidéo", "jeux vidéo", "video game", "video games", "game studio", "studio de jeux"]
+  },
+  {
+    "slug": "ar-vr",
+    "label": "AR/VR",
+    "category": "domain",
+    "aliases": [
+      "réalité virtuelle",
+      "réalité augmentée",
+      "virtual reality",
+      "augmented reality",
+      "xr",
+      "metaverse"
+    ]
+  },
+  {
+    "slug": "robotics",
+    "label": "Robotique",
+    "category": "domain",
+    "aliases": ["robotique", "robotics", "ros", "ros2", "drone", "drones"]
+  },
+  {
+    "slug": "geospatial",
+    "label": "Géospatial",
+    "category": "domain",
+    "aliases": [
+      "sig",
+      "gis",
+      "géomatique",
+      "cartographie",
+      "postgis",
+      "geospatial",
+      "télédétection",
+      "remote sensing"
+    ]
+  },
+  { "slug": "opencv", "label": "OpenCV", "category": "framework", "aliases": ["opencv"] },
+  { "slug": "cuda", "label": "CUDA", "category": "tool", "aliases": ["cuda", "gpu computing", "calcul gpu"] },
+  {
+    "slug": "openapi",
+    "label": "API REST",
+    "category": "tool",
+    "aliases": ["api rest", "rest api", "restful", "openapi", "swagger"]
+  },
+  {
+    "slug": "grpc",
+    "label": "gRPC",
+    "category": "tool",
+    "aliases": ["grpc", "protobuf", "protocol buffers"]
+  },
+  {
+    "slug": "websocket",
+    "label": "WebSocket",
+    "category": "tool",
+    "aliases": ["websocket", "websockets", "socket.io", "temps réel", "real-time", "realtime"]
+  },
+  {
+    "slug": "microservices",
+    "label": "Microservices",
+    "category": "domain",
+    "aliases": ["microservices", "micro-services", "architecture distribuée"]
+  },
+  {
+    "slug": "playwright",
+    "label": "Playwright",
+    "category": "tool",
+    "aliases": ["playwright", "cypress", "selenium"]
+  },
+  {
+    "slug": "jest",
+    "label": "Jest / Vitest",
+    "category": "tool",
+    "aliases": ["jest", "vitest", "testing library"]
+  },
+  { "slug": "figma", "label": "Figma", "category": "tool", "aliases": ["figma"] },
+  {
+    "slug": "sap",
+    "label": "SAP",
+    "category": "tool",
+    "aliases": ["sap", "abap"],
+    "contextRequired": ["sap", "erp", "abap", "s/4hana", "hana"]
+  },
+  {
+    "slug": "salesforce",
+    "label": "Salesforce",
+    "category": "tool",
+    "aliases": ["salesforce", "apex", "lightning web components"]
+  },
+  {
+    "slug": "power-platform",
+    "label": "Power Platform",
+    "category": "tool",
+    "aliases": ["power bi", "power apps", "power automate", "dynamics 365", "sharepoint"]
+  },
+  { "slug": "cobol", "label": "COBOL", "category": "language", "aliases": ["cobol", "mainframe"] },
+  { "slug": "delphi", "label": "Delphi", "category": "language", "aliases": ["delphi", "pascal"] },
+  { "slug": "vba", "label": "VBA", "category": "language", "aliases": ["vba", "visual basic", "vb.net"] },
+  {
+    "slug": "plc",
+    "label": "Automatisme",
+    "category": "domain",
+    "aliases": ["automatisme", "automate programmable", "plc", "scada", "siemens tia", "codesys"]
+  },
+  {
+    "slug": "vhdl",
+    "label": "VHDL / FPGA",
+    "category": "language",
+    "aliases": ["vhdl", "verilog", "fpga", "systemverilog"]
+  },
+  {
+    "slug": "mobile",
+    "label": "Mobile",
+    "category": "domain",
+    "aliases": [
+      "application mobile",
+      "applications mobiles",
+      "mobile app",
+      "mobile apps",
+      "développement mobile",
+      "mobile development"
+    ]
+  },
+  {
+    "slug": "web",
+    "label": "Web",
+    "category": "domain",
+    "aliases": [
+      "développement web",
+      "web development",
+      "application web",
+      "applications web",
+      "web app",
+      "site web",
+      "front-end",
+      "frontend",
+      "back-end",
+      "backend",
+      "full-stack",
+      "fullstack",
+      "full stack"
+    ]
+  }
+]

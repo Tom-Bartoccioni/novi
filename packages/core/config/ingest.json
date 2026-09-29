@@ -1,0 +1,41 @@
+{
+  "nafCodes": [
+    "62.01Z",
+    "62.02A",
+    "62.02B",
+    "62.03Z",
+    "62.09Z",
+    "63.11Z",
+    "63.12Z",
+    "58.21Z",
+    "58.29A",
+    "58.29B",
+    "58.29C",
+    "72.19Z",
+    "71.12B"
+  ],
+  "nafLabels": {
+    "62.01Z": "Programmation informatique",
+    "62.02A": "Conseil en systèmes et logiciels informatiques",
+    "62.02B": "Tierce maintenance de systèmes et d'applications informatiques",
+    "62.03Z": "Gestion d'installations informatiques",
+    "62.09Z": "Autres activités informatiques",
+    "63.11Z": "Traitement de données, hébergement et activités connexes",
+    "63.12Z": "Portails Internet",
+    "58.21Z": "Édition de jeux électroniques",
+    "58.29A": "Édition de logiciels système et de réseau",
+    "58.29B": "Édition de logiciels outils de développement et de langages",
+    "58.29C": "Édition de logiciels applicatifs",
+    "72.19Z": "Recherche-développement en autres sciences physiques et naturelles",
+    "71.12B": "Ingénierie, études techniques"
+  },
+  "headcountRanges": ["03", "11", "12", "21", "22"],
+  "romeCodes": ["M1805", "M1810", "M1802", "M1806", "M1803"],
+  "romeLabels": {
+    "M1805": "Études et développement informatique",
+    "M1810": "Production et exploitation de systèmes d'information",
+    "M1802": "Expertise et support en systèmes d'information",
+    "M1806": "Conseil et maîtrise d'ouvrage en systèmes d'information",
+    "M1803": "Direction des systèmes d'information"
+  }
+}
