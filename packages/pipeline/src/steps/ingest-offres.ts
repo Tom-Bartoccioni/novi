@@ -66,8 +66,9 @@ export function ingestOffres(db: Db, opts: IngestOffresOptions): Promise<RunResu
         log('ingest offres : run limité, expiration des offres ignorée');
         return;
       }
-      // Seuls les runs précédents terminés, sans --limit et sans erreur comptent ; le run courant
-      // (encore en cours, sans finished_at) est ajouté explicitement.
+      // Seuls les runs précédents terminés, sans --limit et sans erreur fatale comptent (une erreur
+      // fatale, levée par withRun, n'a pas de champ siren ; les erreurs par offre en ont un). Le run
+      // courant (encore en cours, sans finished_at) est ajouté explicitement.
       const previousRuns = db
         .select({ id: crawlRuns.id })
         .from(crawlRuns)
@@ -77,7 +78,7 @@ export function ingestOffres(db: Db, opts: IngestOffresOptions): Promise<RunResu
             lt(crawlRuns.id, ctx.runId),
             isNotNull(crawlRuns.finishedAt),
             sql`json_extract(${crawlRuns.args}, '$.limit') is null`,
-            sql`json_array_length(${crawlRuns.errors}) = 0`,
+            sql`not exists (select 1 from json_each(${crawlRuns.errors}) where json_extract(value, '$.siren') is null)`,
           ),
         )
         .orderBy(desc(crawlRuns.id))

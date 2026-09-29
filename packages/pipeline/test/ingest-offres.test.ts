@@ -87,7 +87,7 @@ describe('ingestOffres', () => {
     const db = createDb(':memory:');
     migrateAndSeed(db);
     await ingestOffres(db, { departement: '06', iterate: iterate(payload.resultats) });
-    // Deux runs échoués (ex. authentification) journalisés entre-temps.
+    // Deux runs échoués (erreur fatale, sans siren : ex. authentification) journalisés entre-temps.
     for (let i = 0; i < 2; i++) {
       db.insert(crawlRuns)
         .values({
@@ -99,17 +99,29 @@ describe('ingestOffres', () => {
         })
         .run();
     }
+    // Un run complet avec seulement une erreur par offre (siren présent) compte comme réussi.
+    db.insert(crawlRuns)
+      .values({
+        command: 'ingest offres',
+        args: { departement: '06', limit: null },
+        finishedAt: new Date().toISOString(),
+        stats: { processed: 1, created: 0, updated: 0, errors: 1 },
+        errors: [{ siren: 'X1', message: 'offre invalide' }],
+      })
+      .run();
     const twoOnly = payload.resultats.slice(0, 2);
-    await ingestOffres(db, { departement: '06', iterate: iterate(twoOnly) });
-    await ingestOffres(db, { departement: '06', iterate: iterate(twoOnly) });
     const isActive = () =>
       db
         .select()
         .from(jobOffers)
         .all()
         .find((o) => o.id === '190IJKL')?.isActive;
-    // Un seul run réussi précédent + le run courant : pas d'expiration.
+    // Runs réussis précédents : le premier run et le run « offre invalide » ; les deux runs
+    // échoués sont ignorés. Seuil = premier run : 190IJKL, vue à ce run, reste active.
+    await ingestOffres(db, { departement: '06', iterate: iterate(twoOnly) });
     expect(isActive()).toBe(true);
+    // Seuil = run « offre invalide » : 190IJKL expire. Si ce run n'était pas compté, le seuil
+    // resterait le premier run et l'offre resterait active.
     await ingestOffres(db, { departement: '06', iterate: iterate(twoOnly) });
     expect(isActive()).toBe(false);
   });
