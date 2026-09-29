@@ -1,6 +1,7 @@
 import { detectTechs, loadIngestConfig, loadTechTags } from '@novi/core';
 import { crawlRuns, type Db, jobOffers, upsertCompanyTech } from '@novi/db';
-import { and, desc, eq, lt } from 'drizzle-orm';
+import { and, desc, eq, isNotNull, lt, sql } from 'drizzle-orm';
+import { log } from '../lib/logger';
 import { type RunResult, withRun } from '../lib/run';
 import { iterateOffers, type Offer, toOfferRow } from '../sources/france-travail';
 
@@ -56,19 +57,35 @@ export function ingestOffres(db: Db, opts: IngestOffresOptions): Promise<RunResu
             ctx.stats.created += 1;
           }
         } catch (err) {
-          ctx.error(undefined, err);
+          ctx.error(offer.id, err);
         }
       }
       // Expiration : offres non vues depuis EXPIRE_AFTER_RUNS runs d'ingestion d'offres.
+      // Un run avec --limit ne voit qu'une partie des offres : il ne doit ni expirer, ni compter.
+      if (opts.limit !== undefined) {
+        log('ingest offres : run limité, expiration des offres ignorée');
+        return;
+      }
+      // Seuls les runs précédents terminés, sans --limit et sans erreur comptent ; le run courant
+      // (encore en cours, sans finished_at) est ajouté explicitement.
       const previousRuns = db
         .select({ id: crawlRuns.id })
         .from(crawlRuns)
-        .where(eq(crawlRuns.command, 'ingest offres'))
+        .where(
+          and(
+            eq(crawlRuns.command, 'ingest offres'),
+            lt(crawlRuns.id, ctx.runId),
+            isNotNull(crawlRuns.finishedAt),
+            sql`json_extract(${crawlRuns.args}, '$.limit') is null`,
+            sql`json_array_length(${crawlRuns.errors}) = 0`,
+          ),
+        )
         .orderBy(desc(crawlRuns.id))
-        .limit(EXPIRE_AFTER_RUNS)
+        .limit(EXPIRE_AFTER_RUNS - 1)
         .all();
-      if (previousRuns.length >= EXPIRE_AFTER_RUNS) {
-        const threshold = previousRuns[previousRuns.length - 1]?.id ?? 0;
+      const runIds = [ctx.runId, ...previousRuns.map((r) => r.id)];
+      if (runIds.length >= EXPIRE_AFTER_RUNS) {
+        const threshold = Math.min(...runIds);
         const expired = db
           .update(jobOffers)
           .set({ isActive: false })
