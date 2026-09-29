@@ -7,3 +7,6 @@ data/
 dist/
 *.db
 *.db-journal
+apps/web/next-env.d.ts
+apps/web/.next/
+*.tsbuildinfo
