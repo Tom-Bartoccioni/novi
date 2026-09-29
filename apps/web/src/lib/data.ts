@@ -85,15 +85,19 @@ export type CompanyListItem = {
 const TAGS = loadTechTags();
 const tagIndex = new Map(TAGS.map((t) => [t.slug, t]));
 
-function bestTechs(rows: { tagSlug: string; confidence: number }[]): TechSummary[] {
+/** Meilleure confiance par techno ; les technos `preferred` (celles du filtre) passent en tête. */
+function bestTechs(rows: { tagSlug: string; confidence: number }[], preferred: string[] = []): TechSummary[] {
   const best = new Map<string, number>();
   for (const r of rows) best.set(r.tagSlug, Math.max(best.get(r.tagSlug) ?? 0, r.confidence));
+  const rank = (slug: string) => (preferred.includes(slug) ? 0 : 1);
   return [...best.entries()]
     .map(([slug, confidence]) => {
       const tag = tagIndex.get(slug);
       return { slug, label: tag?.label ?? slug, category: tag?.category ?? 'tool', confidence };
     })
-    .sort((a, b) => b.confidence - a.confidence || a.label.localeCompare(b.label));
+    .sort(
+      (a, b) => rank(a.slug) - rank(b.slug) || b.confidence - a.confidence || a.label.localeCompare(b.label),
+    );
 }
 
 type ScoredOffer = { techSlugs: string[] };
@@ -199,7 +203,7 @@ export function listCompanies(db: Db, profile: Profile, filters: Filters): Compa
       longitude: c.longitude,
       distanceKm: c.distanceKm,
       headcountRange: c.headcountRange,
-      topTechs: bestTechs(techs).slice(0, 3),
+      topTechs: bestTechs(techs, filters.techs).slice(0, 3),
       recruiting,
       score: scoreFromParts(profile, c, c.distanceKm, techs, offers, signalsBySiren.get(c.siren) ?? []).score,
       status,
