@@ -46,7 +46,7 @@ const STOP_WORDS = new Set([
 ]);
 
 export function stripAccents(input: string): string {
-  return input.normalize('NFD').replace(/[̀-ͯ]/g, '');
+  return input.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 }
 
 function basicClean(input: string): string {
