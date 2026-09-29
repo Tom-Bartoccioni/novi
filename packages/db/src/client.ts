@@ -42,9 +42,13 @@ export function createDb(url?: string) {
 
 export type Db = ReturnType<typeof createDb>;
 
-let singleton: Db | null = null;
+/**
+ * Singleton porté par `globalThis` : en dev, le HMR (Turbopack) ré-évalue ce module et une variable
+ * de module ouvrirait une nouvelle connexion better-sqlite3 à chaque rechargement.
+ */
+const globalForDb = globalThis as { __noviDb?: Db };
 
 export function getDb(): Db {
-  if (!singleton) singleton = createDb();
-  return singleton;
+  globalForDb.__noviDb ??= createDb();
+  return globalForDb.__noviDb;
 }

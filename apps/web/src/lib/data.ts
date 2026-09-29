@@ -4,11 +4,13 @@ import {
   loadTechTags,
   type ScoreResult,
   scoreCompany,
+  stripAccents,
   type TechCategory,
 } from '@novi/core';
 import {
   type Company,
   type CompanyStatus,
+  type CrawlRun,
   companies,
   companiesWithinRadius,
   companyStatus,
@@ -203,7 +205,8 @@ export function listCompanies(db: Db, profile: Profile, filters: Filters): Compa
       status,
     });
   }
-  const sizeRank = (r: string | null) => (r ? Number.parseInt(r, 10) || 0 : -1);
+  // 'NN' (effectif non renseigné dans Sirene) se classe comme une taille inconnue.
+  const sizeRank = (r: string | null) => (r && r !== 'NN' ? Number.parseInt(r, 10) || 0 : -1);
   items.sort((a, b) => {
     if (filters.sort === 'distance') return a.distanceKm - b.distanceKm;
     if (filters.sort === 'size')
@@ -382,23 +385,49 @@ export function searchCompaniesByName(
   db: Db,
   q: string,
 ): { siren: string; name: string; city: string | null }[] {
-  const needle = q.trim().toLowerCase();
+  // Les jokers LIKE (`%`, `_`) et l'échappement (`\`) de la saisie sont neutralisés.
+  // Limite : `lower()` de SQLite ne replie que l'ASCII, donc seuls les accents de la saisie sont
+  // retirés ; un nom stocké avec accents ne correspond qu'à une saisie accentuée à l'identique.
+  const needle = stripAccents(q.trim())
+    .toLowerCase()
+    .replace(/[\\%_]/g, '\\$&');
   if (!needle) return [];
+  const pattern = `%${needle}%`;
   return db
     .select({ siren: companies.siren, name: companies.name, city: companies.city })
     .from(companies)
     .where(
-      sql`lower(${companies.name}) like ${`%${needle}%`} or lower(${companies.legalName}) like ${`%${needle}%`}`,
+      sql`lower(${companies.name}) like ${pattern} escape '\\' or lower(${companies.legalName}) like ${pattern} escape '\\'`,
     )
     .orderBy(companies.name)
     .limit(20)
     .all();
 }
 
+export type RunStatus = 'done' | 'running' | 'aborted';
+export type RunWithStatus = CrawlRun & { status: RunStatus };
+
+/** Au-delà de ce délai sans fin enregistrée, un run est considéré comme interrompu. */
+const RUNNING_MAX_MS = 2 * 60 * 60 * 1000;
+
+function runStatus(run: CrawlRun, now: number): RunStatus {
+  if (run.finishedAt) return 'done';
+  const started = Date.parse(run.startedAt);
+  return Number.isNaN(started) || now - started > RUNNING_MAX_MS ? 'aborted' : 'running';
+}
+
 export function pipelineOverview(db: Db) {
   const one = (q: { get: () => { c: number } | undefined }) => q.get()?.c ?? 0;
+  const now = Date.now();
+  const runs: RunWithStatus[] = db
+    .select()
+    .from(crawlRuns)
+    .orderBy(desc(crawlRuns.id))
+    .limit(20)
+    .all()
+    .map((run) => ({ ...run, status: runStatus(run, now) }));
   return {
-    runs: db.select().from(crawlRuns).orderBy(desc(crawlRuns.id)).limit(20).all(),
+    runs,
     counts: {
       companies: one(db.select({ c: count() }).from(companies)),
       withWebsite: one(db.select({ c: count() }).from(companies).where(isNotNull(companies.website))),
