@@ -30,7 +30,7 @@ ingest
 program
   .command('match')
   .command('offres')
-  .option('--force', 'retraiter aussi les offres déjà rattachées')
+  .option('--force', 'retraiter aussi les offres déjà rattachées (ne détache jamais)')
   .action(async (opts: { force?: boolean }) => {
     await matchOffres(getDb(), opts);
   });

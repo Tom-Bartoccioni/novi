@@ -1,6 +1,6 @@
 import { detectTechs, distanceKm, loadTechTags, normalizeCompanyName, trigramSimilarity } from '@novi/core';
 import { companies, type Db, findAlias, jobOffers, upsertCompanyTech } from '@novi/db';
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 import { type RunResult, withRun } from '../lib/run';
 import { OFFER_TECH_CONFIDENCE, offerText } from './ingest-offres';
 
@@ -9,10 +9,15 @@ export const FUZZY_THRESHOLD = 0.9;
 
 type Candidate = { siren: string; names: string[]; latitude: number; longitude: number };
 
-let cache: { db: Db; candidates: Candidate[] } | null = null;
+let cache: { db: Db; count: number; candidates: Candidate[] } | null = null;
+
+function countCompanies(db: Db): number {
+  return db.select({ count: sql<number>`count(*)` }).from(companies).get()?.count ?? 0;
+}
 
 function loadCandidates(db: Db): Candidate[] {
-  if (cache && cache.db === db) return cache.candidates;
+  const count = countCompanies(db);
+  if (cache && cache.db === db && cache.count === count) return cache.candidates;
   const rows = db
     .select({
       siren: companies.siren,
@@ -34,12 +39,17 @@ function loadCandidates(db: Db): Candidate[] {
     latitude: r.latitude,
     longitude: r.longitude,
   }));
-  cache = { db, candidates };
+  cache = { db, count, candidates };
   return candidates;
 }
 
 export function invalidateCandidates(): void {
   cache = null;
+}
+
+/** Suites de chiffres trouvées dans un nom normalisé (ex. "agence web 2" -> ["2"]). */
+export function numericTokens(name: string): string[] {
+  return name.match(/\d+/g) ?? [];
 }
 
 export type OfferLike = { employerName: string | null; latitude: number | null; longitude: number | null };
@@ -55,11 +65,23 @@ export function findCompanyForOffer(db: Db, offer: OfferLike): string | null {
     ? { latitude: offer.latitude as number, longitude: offer.longitude as number }
     : null;
 
+  const wantedNumbers = numericTokens(wanted).sort().join(',');
   const scored: { siren: string; exact: boolean; similarity: number; distance: number }[] = [];
   for (const c of loadCandidates(db)) {
     const exact = c.names.includes(wanted);
-    const similarity = exact ? 1 : Math.max(...c.names.map((n) => trigramSimilarity(n, wanted)));
+    let bestName = c.names[0] ?? '';
+    let similarity = exact ? 1 : 0;
+    if (!exact) {
+      for (const n of c.names) {
+        const s = trigramSimilarity(n, wanted);
+        if (s > similarity) {
+          similarity = s;
+          bestName = n;
+        }
+      }
+    }
     if (!exact && similarity < FUZZY_THRESHOLD) continue;
+    if (!exact && numericTokens(bestName).sort().join(',') !== wantedNumbers) continue;
     const distance = point ? distanceKm(point, c) : 0;
     if (point && distance > MAX_MATCH_DISTANCE_KM) continue;
     if (!point && !exact) continue;
@@ -69,6 +91,7 @@ export function findCompanyForOffer(db: Db, offer: OfferLike): string | null {
   scored.sort(
     (a, b) => Number(b.exact) - Number(a.exact) || b.similarity - a.similarity || a.distance - b.distance,
   );
+  if (!point && scored.filter((s) => s.exact).length >= 2) return null;
   return scored[0]?.siren ?? null;
 }
 
