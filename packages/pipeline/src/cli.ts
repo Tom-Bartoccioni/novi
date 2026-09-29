@@ -1,6 +1,7 @@
 import { getDb } from '@novi/db';
 import { Command } from 'commander';
 import { log } from './lib/logger';
+import { crawlWebsites } from './steps/crawl-websites';
 import { discoverWebsites } from './steps/discover-websites';
 import { ingestOffres } from './steps/ingest-offres';
 import { ingestSirene } from './steps/ingest-sirene';
@@ -47,10 +48,12 @@ program
 program
   .command('crawl')
   .command('websites')
-  .option('--force')
+  .option('--force', 'réanalyser même si crawlé il y a moins de 30 jours')
   .option('--limit <n>', 'nombre max', Number)
-  .option('--siren <siren>')
-  .action(notImplemented('crawl websites'));
+  .option('--siren <siren>', 'une seule entreprise')
+  .action(async (opts: { force?: boolean; limit?: number; siren?: string }) => {
+    await crawlWebsites(getDb(), opts);
+  });
 program
   .command('enrich')
   .command('github')
