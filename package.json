@@ -16,6 +16,11 @@
     "db:migrate": "pnpm --filter @novi/db migrate",
     "pipeline": "pnpm --filter @novi/pipeline exec tsx src/cli.ts"
   },
+  "pnpm": {
+    "neverBuiltDependencies": [
+      "better-sqlite3"
+    ]
+  },
   "devDependencies": {
     "@biomejs/biome": "^2.5.14",
     "@types/node": "^26.6.3",
