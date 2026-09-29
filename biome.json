@@ -1,6 +1,17 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.5.14/schema.json",
-  "files": { "includes": ["**", "!**/node_modules", "!**/.next", "!**/drizzle/meta", "!**/data"] },
+  "files": {
+    "includes": [
+      "**",
+      "!**/node_modules",
+      "!**/.next",
+      "!**/drizzle/meta",
+      "!**/data",
+      "!**/next-env.d.ts",
+      "!**/components/ui"
+    ]
+  },
+  "css": { "parser": { "tailwindDirectives": true } },
   "formatter": { "indentStyle": "space", "indentWidth": 2, "lineWidth": 110 },
   "linter": { "enabled": true, "rules": { "recommended": true } },
   "javascript": { "formatter": { "quoteStyle": "single", "semicolons": "always" } }
