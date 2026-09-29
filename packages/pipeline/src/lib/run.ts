@@ -1,4 +1,5 @@
-import { crawlRuns, type Db, type RunError, type RunStats } from '@novi/db';
+import { loadTechTags } from '@novi/core';
+import { crawlRuns, type Db, type RunError, type RunStats, syncTechTags } from '@novi/db';
 import { eq } from 'drizzle-orm';
 import { log, warn } from './logger';
 
@@ -21,6 +22,8 @@ export async function withRun(
   args: Record<string, unknown>,
   step: (ctx: RunContext) => Promise<void>,
 ): Promise<RunResult> {
+  // Le dictionnaire des technos est la référence : un tag ajouté au JSON doit exister avant toute insertion.
+  syncTechTags(db, loadTechTags());
   const run = db.insert(crawlRuns).values({ command, args }).returning({ id: crawlRuns.id }).get();
   const stats = emptyStats();
   const errors: RunError[] = [];

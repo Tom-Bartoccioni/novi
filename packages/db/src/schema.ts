@@ -177,6 +177,7 @@ export const crawlRuns = sqliteTable('crawl_runs', {
   finishedAt: text('finished_at'),
   stats: text('stats', { mode: 'json' }).$type<RunStats>(),
   errors: text('errors', { mode: 'json' }).$type<RunError[]>().notNull().default([]),
+  ...timestamps,
 });
 
 export type Company = typeof companies.$inferSelect;
