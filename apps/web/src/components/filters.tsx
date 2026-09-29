@@ -2,6 +2,7 @@
 
 import { HEADCOUNT_LABELS } from '@novi/core';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useRef } from 'react';
 import { Input } from '@/components/ui/input';
 import type { Filters } from '@/lib/data';
 
@@ -26,6 +27,8 @@ export function FiltersBar({
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => clearTimeout(searchTimer.current ?? undefined), []);
 
   const update = (patch: Record<string, string | null>) => {
     const next = new URLSearchParams(params.toString());
@@ -40,6 +43,10 @@ export function FiltersBar({
     const nextList = current.includes(value) ? current.filter((v) => v !== value) : [...current, value];
     update({ [key]: nextList.join(',') });
   };
+  const updateSearch = (value: string) => {
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => update({ q: value }), 300);
+  };
 
   return (
     <div className="space-y-3 rounded-lg border p-3 text-sm">
@@ -47,7 +54,7 @@ export function FiltersBar({
         <Input
           placeholder="Nom ou ville"
           defaultValue={filters.q}
-          onChange={(e) => update({ q: e.target.value })}
+          onChange={(e) => updateSearch(e.target.value)}
           className="h-8 w-48"
         />
         <select

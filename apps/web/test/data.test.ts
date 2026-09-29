@@ -60,6 +60,14 @@ describe('listCompanies', () => {
     expect(cliken.status).toBe('to_review');
     expect(cliken.distanceKm).toBeGreaterThan(18);
   });
+  it('puts the filtered techs first in topTechs', () => {
+    const db = seededDb();
+    const profile = getDefaultProfile(db);
+    const rows = listCompanies(db, profile, parseFilters({ techs: 'postgresql' }));
+    const cliken = rows.find((r) => r.name === 'Cliken Web')!;
+    expect(cliken.topTechs[0]!.slug).toBe('postgresql');
+    expect(cliken.topTechs.map((t) => t.slug)).toEqual(['postgresql', 'react']);
+  });
   it('filters by tech, headcount, recruiting, status and query; sorts by distance', () => {
     const db = seededDb();
     const profile = getDefaultProfile(db);
