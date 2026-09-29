@@ -1,6 +1,7 @@
 import { getDb } from '@novi/db';
 import { Command } from 'commander';
 import { log } from './lib/logger';
+import { discoverWebsites } from './steps/discover-websites';
 import { ingestOffres } from './steps/ingest-offres';
 import { ingestSirene } from './steps/ingest-sirene';
 import { matchOffres } from './steps/match-offres';
@@ -37,10 +38,12 @@ program
 program
   .command('discover')
   .command('websites')
-  .option('--force')
+  .option('--force', 'retraiter les sites déjà trouvés automatiquement')
   .option('--limit <n>', 'nombre max', Number)
-  .option('--siren <siren>')
-  .action(notImplemented('discover websites'));
+  .option('--siren <siren>', 'une seule entreprise')
+  .action(async (opts: { force?: boolean; limit?: number; siren?: string }) => {
+    await discoverWebsites(getDb(), opts);
+  });
 program
   .command('crawl')
   .command('websites')

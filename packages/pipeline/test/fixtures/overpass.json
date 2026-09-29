@@ -1,0 +1,25 @@
+{
+  "version": 0.6,
+  "elements": [
+    {
+      "type": "node",
+      "id": 1,
+      "lat": 43.6198,
+      "lon": 7.0374,
+      "tags": { "name": "Cliken Web", "office": "it", "website": "https://www.cliken-web.com" }
+    },
+    {
+      "type": "way",
+      "id": 2,
+      "center": { "lat": 43.7103, "lon": 7.2621 },
+      "tags": { "name": "Nice Tech Studio", "office": "company", "website": "nicetechstudio.fr" }
+    },
+    {
+      "type": "node",
+      "id": 3,
+      "lat": 43.55,
+      "lon": 7.01,
+      "tags": { "name": "Boulangerie", "shop": "bakery", "website": "https://boulangerie.example" }
+    }
+  ]
+}
