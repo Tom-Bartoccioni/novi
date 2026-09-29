@@ -5,10 +5,12 @@ import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { type Db, getDb, resolveDbPath } from './client';
 import { ensureDefaultProfile, syncTechTags } from './queries';
 
-const MIGRATIONS_FOLDER = join(import.meta.dirname, '..', 'drizzle');
+function migrationsFolder(): string {
+  return join(import.meta.dirname, '..', 'drizzle');
+}
 
 export function runMigrations(db: Db): void {
-  migrate(db, { migrationsFolder: MIGRATIONS_FOLDER });
+  migrate(db, { migrationsFolder: migrationsFolder() });
 }
 
 export function seed(db: Db): void {
