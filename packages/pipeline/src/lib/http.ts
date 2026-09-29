@@ -55,7 +55,7 @@ export type TextPage = {
   contentType: string;
 };
 
-/** GET d'une page texte/HTML, tronquée à maxBytes, en-têtes en minuscules. */
+/** GET d'une page texte/HTML, lue en flux et tronquée à maxBytes, en-têtes en minuscules. */
 export async function fetchText(url: string, opts: FetchOptions = {}): Promise<TextPage> {
   const response = await fetchWithTimeout(url, opts);
   const contentType = response.headers.get('content-type') ?? '';
@@ -63,8 +63,25 @@ export async function fetchText(url: string, opts: FetchOptions = {}): Promise<T
   response.headers.forEach((v, k) => {
     headers[k.toLowerCase()] = v;
   });
-  const max = opts.maxBytes ?? 2_000_000;
-  const buffer = Buffer.from(await response.arrayBuffer());
-  const body = buffer.subarray(0, max).toString('utf8');
+  const body = (await readUpTo(response, opts.maxBytes ?? 2_000_000)).toString('utf8');
   return { url: response.url || url, status: response.status, headers, body, contentType };
+}
+
+/** Lit le corps en flux et s'arrête dès que maxBytes est atteint, sans télécharger le reste. */
+async function readUpTo(response: Response, maxBytes: number): Promise<Buffer> {
+  if (!response.body) return Buffer.alloc(0);
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let received = 0;
+  try {
+    while (received < maxBytes) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      received += value.length;
+    }
+  } finally {
+    if (received >= maxBytes) await reader.cancel().catch(() => undefined);
+  }
+  return Buffer.concat(chunks).subarray(0, maxBytes);
 }
