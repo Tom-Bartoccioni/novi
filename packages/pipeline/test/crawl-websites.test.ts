@@ -55,6 +55,13 @@ describe('visibleText', () => {
     expect(visibleText('<html><body><ul><li>React</li><li>Vue</li></ul></body></html>')).toBe('React\nVue');
   });
 
+  it('separates adjacent inline elements that have no whitespace between them', () => {
+    const text = visibleText(
+      '<html><body><nav><a>Accueil</a><a>React</a><a>Angular</a></nav><div><span>Django</span><span>Symfony</span></div></body></html>',
+    );
+    expect(text).toBe('Accueil React Angular\nDjango Symfony');
+  });
+
   it('removes scripts even when nested inside blocks', () => {
     const text = visibleText(
       '<html><body><div><script>window.x = "Angular"</script><p>Nous aimons <b>Vue</b>.</p></div></body></html>',
