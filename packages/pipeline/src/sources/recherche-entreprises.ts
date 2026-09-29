@@ -154,13 +154,36 @@ function toLocal(
   };
 }
 
-/** Le siège s'il est dans le département, sinon le premier établissement actif qui y est. */
-export function pickLocalEstablishment(result: SearchResult, departement: string): LocalEstablishment | null {
-  if (establishmentDepartement(result.siege) === departement) return toLocal(result.siege, true);
-  const candidate = result.matching_etablissements.find(
-    (e) => establishmentDepartement(e) === departement && e.etat_administratif === 'A' && e.latitude !== null,
+type Establishment = z.infer<typeof establishmentSchema>;
+
+function isActiveIn(e: Establishment, departement: string): boolean {
+  return establishmentDepartement(e) === departement && e.etat_administratif === 'A';
+}
+
+/** Vrai si le siège ou un établissement actif est dans le département, coordonnées ou non. */
+export function hasLocalEstablishment(result: SearchResult, departement: string): boolean {
+  return (
+    establishmentDepartement(result.siege) === departement ||
+    result.matching_etablissements.some((e) => isActiveIn(e, departement))
   );
-  return candidate ? toLocal(candidate, false) : null;
+}
+
+/**
+ * Le siège s'il est dans le département (avec coordonnées), sinon le premier établissement actif
+ * géolocalisé qui y est. `headquartersInZone` reste vrai quand le siège est dans la zone sans coordonnées.
+ */
+export function pickLocalEstablishment(result: SearchResult, departement: string): LocalEstablishment | null {
+  const headquartersInZone = establishmentDepartement(result.siege) === departement;
+  if (headquartersInZone) {
+    const hq = toLocal(result.siege, true);
+    if (hq) return hq;
+  }
+  for (const e of result.matching_etablissements) {
+    if (!isActiveIn(e, departement)) continue;
+    const local = toLocal(e, headquartersInZone);
+    if (local) return local;
+  }
+  return null;
 }
 
 export function toCompanyRow(

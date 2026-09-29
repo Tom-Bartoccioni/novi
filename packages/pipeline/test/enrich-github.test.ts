@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { loadTechTags } from '@novi/core';
 import { companies, companyTech, createDb, migrateAndSeed, signals } from '@novi/db';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { languageToSlug, reposSchema, summarizeRepos } from '../src/sources/github';
 import { enrichGithub } from '../src/steps/enrich-github';
 
@@ -60,5 +60,28 @@ describe('enrichGithub', () => {
       'github:typescript:0.8',
     ]);
     expect(db.select().from(signals).all()).toMatchObject([{ kind: 'github_active', value: 3 }]);
+  });
+  it('warns when --siren targets a company without a known GitHub organisation', async () => {
+    const db = createDb(':memory:');
+    migrateAndSeed(db);
+    db.insert(companies)
+      .values({
+        siren: '000000002',
+        name: 'No Org',
+        legalName: 'NO ORG',
+        nafCode: '62.01Z',
+        siretLocal: 'b',
+        latitude: 43.62,
+        longitude: 7.04,
+      })
+      .run();
+    const warned = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const result = await enrichGithub(db, { siren: '000000002', fetchRepos: async () => repos, now: NOW });
+      expect(result.stats.processed).toBe(0);
+      expect(warned.mock.calls.flat().join('\n')).toContain("000000002 : pas d'organisation GitHub connue");
+    } finally {
+      warned.mockRestore();
+    }
   });
 });

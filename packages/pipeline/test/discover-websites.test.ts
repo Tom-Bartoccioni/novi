@@ -254,6 +254,31 @@ describe('discoverWebsites', () => {
     expect(fetched).not.toContain('https://manual.com');
   });
 
+  it('normalises an offer URL without scheme before storing it', async () => {
+    const db = createDb(':memory:');
+    migrateAndSeed(db);
+    db.insert(companies)
+      .values({
+        siren: '000000001',
+        name: 'Cliken Web',
+        legalName: 'CLIKEN WEB PRO',
+        nafCode: '62.01Z',
+        siretLocal: 'a',
+        latitude: 43.6197,
+        longitude: 7.0373,
+      })
+      .run();
+    await discoverWebsites(db, {
+      offerUrls: new Map([['000000001', 'cliken-web.com']]),
+      osm: [],
+      fetchHomepage: async () => null,
+    });
+    expect(db.select().from(companies).get()).toMatchObject({
+      website: 'https://cliken-web.com',
+      websiteSource: 'offre',
+    });
+  });
+
   it('warns and leaves a manually set website untouched when targeted by --siren', async () => {
     const db = createDb(':memory:');
     migrateAndSeed(db);

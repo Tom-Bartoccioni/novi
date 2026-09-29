@@ -215,6 +215,78 @@ describe('host handling', () => {
   });
 });
 
+describe('crawl deadline', () => {
+  it('stops fetching more pages once the deadline is passed and still persists the analysis', async () => {
+    const db = createDb(':memory:');
+    migrateAndSeed(db);
+    db.insert(companies)
+      .values({
+        siren: '000000003',
+        name: 'Slow',
+        legalName: 'SLOW',
+        nafCode: '62.01Z',
+        siretLocal: 'c',
+        latitude: 43.62,
+        longitude: 7.04,
+        website: 'https://slow.example',
+        websiteSource: 'manuel',
+        websiteConfidence: 1,
+      })
+      .run();
+    const requested: string[] = [];
+    const fetchPage = async (url: string) => {
+      requested.push(url);
+      await new Promise((r) => setTimeout(r, 50));
+      return page(url, '<html><body><p>Nous utilisons le framework Vue.</p></body></html>');
+    };
+    const proposed = selectPages('https://slow.example', [], []).length;
+    const result = await crawlCompany(db, '000000003', {
+      fetchPage,
+      robotsAllowed: async () => true,
+      deadlineMs: 120,
+    });
+    expect(requested.length).toBeGreaterThanOrEqual(1);
+    expect(requested.length).toBeLessThan(proposed);
+    expect(result.detections.map((d) => d.slug)).toContain('vue');
+    expect(db.select().from(companies).get()?.lastCrawledAt).toBeTruthy();
+    expect(
+      db
+        .select()
+        .from(companyTech)
+        .all()
+        .map((t) => t.tagSlug),
+    ).toEqual(['vue']);
+  });
+});
+
+describe('external redirects', () => {
+  it('rejects a site that redirects to a social network or aggregator', async () => {
+    const db = createDb(':memory:');
+    migrateAndSeed(db);
+    db.insert(companies)
+      .values({
+        siren: '000000004',
+        name: 'Social',
+        legalName: 'SOCIAL',
+        nafCode: '62.01Z',
+        siretLocal: 'd',
+        latitude: 43.62,
+        longitude: 7.04,
+        website: 'https://social.example',
+        websiteSource: 'devinette',
+        websiteConfidence: 0.6,
+      })
+      .run();
+    const fetchPage = async () =>
+      page('https://www.facebook.com/x', '<html><body><p>Nous utilisons le framework Vue.</p></body></html>');
+    await expect(
+      crawlCompany(db, '000000004', { fetchPage, robotsAllowed: async () => true }),
+    ).rejects.toThrow('Le site redirige vers facebook.com, ignoré');
+    expect(db.select().from(companies).get()?.lastCrawledAt).toBeNull();
+    expect(db.select().from(companyTech).all()).toEqual([]);
+  });
+});
+
 describe('career detection by pathname', () => {
   it('ignores career words that only appear in the hostname', () => {
     const result = analyzeSite('https://joinly.fr', [

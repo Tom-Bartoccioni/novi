@@ -1,7 +1,7 @@
 import { loadTechTags } from '@novi/core';
 import { companies, type Db, replaceCompanyTech, replaceSignals } from '@novi/db';
 import { eq, isNotNull } from 'drizzle-orm';
-import { log } from '../lib/logger';
+import { log, warn } from '../lib/logger';
 import { type RunResult, withRun } from '../lib/run';
 import { fetchRepos, type Repo, summarizeRepos } from '../sources/github';
 
@@ -29,7 +29,10 @@ export function enrichGithub(db: Db, opts: EnrichGithubOptions): Promise<RunResu
       if (opts.limit !== undefined) targets = targets.slice(0, opts.limit);
       log(`${targets.length} organisations GitHub à lire`);
       for (const t of targets) {
-        if (!t.githubOrg) continue;
+        if (!t.githubOrg) {
+          if (opts.siren) warn(`${t.siren} : pas d'organisation GitHub connue`);
+          continue;
+        }
         ctx.stats.processed += 1;
         try {
           const summary = summarizeRepos(await fetcher(t.githubOrg), tags, opts.now);

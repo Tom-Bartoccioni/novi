@@ -53,4 +53,33 @@ describe('ingestSirene', () => {
     expect(result.stats.created).toBe(page.results.length);
     expect(db.select().from(companies).where(eq(companies.siren, orphan.siren)).all()).toEqual([]);
   });
+  it('counts why results were skipped: no local establishment vs no coordinates', async () => {
+    const db = createDb(':memory:');
+    migrateAndSeed(db);
+    const first = page.results[0];
+    if (!first) throw new Error('fixture vide');
+    const noLocal = {
+      ...first,
+      siren: '000000000',
+      matching_etablissements: first.matching_etablissements.filter((e) => e.etat_administratif !== 'A'),
+    };
+    const noCoords = {
+      ...first,
+      siren: '000000001',
+      siege: { ...first.siege, departement: '06', code_postal: '06000', latitude: null, longitude: null },
+      matching_etablissements: first.matching_etablissements.map((e) => ({
+        ...e,
+        latitude: null,
+        longitude: null,
+      })),
+    };
+    async function* withSkipped() {
+      yield noLocal;
+      yield noCoords;
+      for (const r of page.results) yield r;
+    }
+    const result = await ingestSirene(db, { departement: '06', iterate: () => withSkipped() });
+    expect(result.stats).toMatchObject({ skipped: 2, skippedNoLocal: 1, skippedNoCoords: 1 });
+    expect(result.stats.created).toBe(page.results.length);
+  });
 });
