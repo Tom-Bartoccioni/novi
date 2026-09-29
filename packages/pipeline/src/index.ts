@@ -4,6 +4,7 @@ export * from './lib/run';
 export * from './sources/france-travail';
 export * from './sources/overpass';
 export * from './sources/recherche-entreprises';
+export * from './steps/crawl-websites';
 export * from './steps/discover-websites';
 export * from './steps/ingest-offres';
 export * from './steps/ingest-sirene';
