@@ -16,21 +16,23 @@ export type FetchOptions = {
   method?: 'GET' | 'HEAD' | 'POST';
   body?: string;
   maxBytes?: number;
+  /** Signal d'annulation fourni par l'appelant ; sinon un délai timeoutMs est appliqué à la réponse. */
+  signal?: AbortSignal;
 };
 
 export async function fetchWithTimeout(url: string, opts: FetchOptions = {}): Promise<Response> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), opts.timeoutMs ?? 10_000);
+  const controller = opts.signal ? null : new AbortController();
+  const timer = controller ? setTimeout(() => controller.abort(), opts.timeoutMs ?? 10_000) : null;
   try {
     return await fetch(url, {
       method: opts.method ?? 'GET',
       headers: { 'user-agent': USER_AGENT, ...opts.headers },
       body: opts.body,
       redirect: 'follow',
-      signal: controller.signal,
+      signal: opts.signal ?? controller?.signal,
     });
   } finally {
-    clearTimeout(timer);
+    if (timer) clearTimeout(timer);
   }
 }
 
@@ -55,16 +57,22 @@ export type TextPage = {
   contentType: string;
 };
 
-/** GET d'une page texte/HTML, lue en flux et tronquée à maxBytes, en-têtes en minuscules. */
+/** GET d'une page texte/HTML, lue en flux et tronquée à maxBytes, en-têtes en minuscules. Le délai couvre aussi la lecture du corps. */
 export async function fetchText(url: string, opts: FetchOptions = {}): Promise<TextPage> {
-  const response = await fetchWithTimeout(url, opts);
-  const contentType = response.headers.get('content-type') ?? '';
-  const headers: Record<string, string> = {};
-  response.headers.forEach((v, k) => {
-    headers[k.toLowerCase()] = v;
-  });
-  const body = (await readUpTo(response, opts.maxBytes ?? 2_000_000)).toString('utf8');
-  return { url: response.url || url, status: response.status, headers, body, contentType };
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), opts.timeoutMs ?? 10_000);
+  try {
+    const response = await fetchWithTimeout(url, { ...opts, signal: controller.signal });
+    const contentType = response.headers.get('content-type') ?? '';
+    const headers: Record<string, string> = {};
+    response.headers.forEach((v, k) => {
+      headers[k.toLowerCase()] = v;
+    });
+    const body = (await readUpTo(response, opts.maxBytes ?? 2_000_000)).toString('utf8');
+    return { url: response.url || url, status: response.status, headers, body, contentType };
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /** Lit le corps en flux et s'arrête dès que maxBytes est atteint, sans télécharger le reste. */

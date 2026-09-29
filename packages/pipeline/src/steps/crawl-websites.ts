@@ -1,4 +1,5 @@
 import {
+  allCrawlPaths,
   type Detection,
   detectEsn,
   detectFingerprints,
@@ -61,6 +62,19 @@ const PERSONAL_GITHUB = new Set([
   'explore',
 ]);
 
+/** Même site à « www. » près. */
+function sameHost(a: string, b: string): boolean {
+  return a.replace(/^www\./, '') === b.replace(/^www\./, '');
+}
+
+function pathOf(url: string): string {
+  try {
+    return new URL(url).pathname.toLowerCase();
+  } catch {
+    return url.toLowerCase();
+  }
+}
+
 export function extractLinks(html: string, baseUrl: string): Links {
   const $ = cheerio.load(html);
   const base = new URL(baseUrl);
@@ -88,7 +102,7 @@ export function extractLinks(html: string, baseUrl: string): Links {
       linkedin = url.toString();
       return;
     }
-    if (url.hostname === base.hostname) {
+    if (sameHost(url.hostname, base.hostname)) {
       const clean = url.toString().replace(/\/$/, '');
       internal.add(clean);
       anchors.push({ href: clean, text: $(el).text().replace(/\s+/g, ' ').trim() });
@@ -97,8 +111,9 @@ export function extractLinks(html: string, baseUrl: string): Links {
   return { internal: [...internal], anchors, github, linkedin };
 }
 
+/** Mots-clés carrière dans le texte du lien ou le chemin de l'URL (jamais dans le nom d'hôte). */
 function looksLikeCareer(text: string, href: string): boolean {
-  const hay = `${text} ${href}`.toLowerCase();
+  const hay = `${text} ${pathOf(href)}`.toLowerCase();
   return CAREER_WORDS.some((w) => hay.includes(w));
 }
 
@@ -109,11 +124,20 @@ export function selectPages(baseUrl: string, internal: string[], anchors: Link[]
     if (!ordered.includes(u) && ordered.length < MAX_PAGES) ordered.push(u);
   };
   for (const a of anchors) if (looksLikeCareer(a.text, a.href)) push(a.href);
-  for (const path of loadCrawlPaths()) {
+  for (const path of allCrawlPaths()) {
     const candidate = `${root}${path}`;
     if (internal.includes(candidate)) push(candidate);
   }
-  for (const path of loadCrawlPaths()) push(`${root}${path}`);
+  // Sondage équilibré : une famille après l'autre (carrière, présentation, technique, autres).
+  const families = loadCrawlPaths();
+  const lists = [families.careers, families.about, families.tech, families.other];
+  const longest = Math.max(...lists.map((l) => l.length));
+  for (let i = 0; i < longest; i += 1) {
+    for (const list of lists) {
+      const path = list[i];
+      if (path) push(`${root}${path}`);
+    }
+  }
   return ordered.slice(0, MAX_PAGES);
 }
 
@@ -148,6 +172,7 @@ export function analyzeSite(baseUrl: string, pages: TextPage[]): SiteAnalysis {
     const links = extractLinks(p.body, baseUrl);
     githubOrg = githubOrg ?? links.github;
     linkedinUrl = linkedinUrl ?? links.linkedin;
+    const path = pathOf(p.url);
     const isCareer = looksLikeCareer('', p.url) && p.url.replace(/\/$/, '') !== baseUrl.replace(/\/$/, '');
     if (isCareer && !careersUrl) careersUrl = p.url;
     if (!careersUrl) {
@@ -155,7 +180,7 @@ export function analyzeSite(baseUrl: string, pages: TextPage[]): SiteAnalysis {
       if (careerLink) careersUrl = careerLink.href;
     }
     const text = visibleText(p.body);
-    const technical = TECH_PAGE_WORDS.some((w) => p.url.toLowerCase().includes(w));
+    const technical = TECH_PAGE_WORDS.some((w) => path.includes(w));
     lists.push(detectTechs(text, tags, technical ? 0.7 : 0.5));
     lists.push(detectFingerprints(p.body, p.headers, tags));
     esnEvidence = esnEvidence ?? detectEsn(text, esnKeywords);
@@ -212,15 +237,17 @@ export async function crawlCompany(db: Db, siren: string, deps: CrawlDeps = {}):
   if (!(await robotsAllowed(baseUrl))) throw new Error(`robots.txt interdit le crawl de ${baseUrl}`);
   const home = await fetchPage(baseUrl);
   if (!home) throw new Error(`Page d'accueil inaccessible : ${baseUrl}`);
+  // Base effective : l'origine finale après redirections (ex. https://x.com -> https://www.x.com).
+  const siteBase = new URL(home.url).origin;
   const pages: TextPage[] = [home];
-  const links = extractLinks(home.body, baseUrl);
-  for (const url of selectPages(baseUrl, links.internal, links.anchors).slice(1)) {
+  const links = extractLinks(home.body, siteBase);
+  for (const url of selectPages(siteBase, links.internal, links.anchors).slice(1)) {
     if (deps.fetchPage === undefined) await sleep(1000);
     if (!(await robotsAllowed(url))) continue;
     const p = await fetchPage(url);
     if (p) pages.push(p);
   }
-  const analysis = analyzeSite(baseUrl, pages);
+  const analysis = analyzeSite(siteBase, pages);
   db.update(companies)
     .set({
       description: analysis.description,

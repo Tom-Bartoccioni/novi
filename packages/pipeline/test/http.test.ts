@@ -10,6 +10,12 @@ beforeAll(async () => {
   server = createServer((req, res) => {
     res.on('error', () => undefined);
     req.socket.on('error', () => undefined);
+    if (req.url === '/drip') {
+      res.writeHead(200, { 'content-type': 'text/html' });
+      const timer = setInterval(() => res.write('a'), 200);
+      res.on('close', () => clearInterval(timer));
+      return;
+    }
     if (req.url === '/big') {
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
       res.end(Buffer.alloc(5_000_000, 'a'));
@@ -35,6 +41,14 @@ describe('fetchText', () => {
     expect(page.body.length).toBeLessThanOrEqual(1000);
     expect(page.body.length).toBeGreaterThan(0);
     expect(Date.now() - started).toBeLessThan(2000);
+  });
+
+  it('aborts when the body drips slower than the timeout', async () => {
+    const started = Date.now();
+    await expect(fetchText(`${origin}/drip`, { timeoutMs: 500 })).rejects.toMatchObject({
+      name: 'AbortError',
+    });
+    expect(Date.now() - started).toBeLessThan(1500);
   });
 
   it('lowercases header names and exposes the content type', async () => {
