@@ -100,6 +100,18 @@ describe('listCompanies', () => {
       ['react', 1],
     ]);
   });
+  it('scores the list exactly like the detail page', () => {
+    const db = seededDb();
+    db.update(profiles)
+      .set({ skills: ['react'] })
+      .run();
+    const profile = getDefaultProfile(db);
+    const rows = listCompanies(db, profile, parseFilters({}));
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows) {
+      expect(row.score).toBe(getCompanyDetail(db, profile, row.siren)?.score.score);
+    }
+  });
 });
 
 describe('getCompanyDetail', () => {
