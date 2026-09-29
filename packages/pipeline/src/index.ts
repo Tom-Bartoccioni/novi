@@ -11,3 +11,4 @@ export * from './steps/enrich-github';
 export * from './steps/ingest-offres';
 export * from './steps/ingest-sirene';
 export * from './steps/match-offres';
+export * from './steps/signals';

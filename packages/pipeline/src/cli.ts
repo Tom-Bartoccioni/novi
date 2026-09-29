@@ -7,6 +7,7 @@ import { enrichGithub } from './steps/enrich-github';
 import { ingestOffres } from './steps/ingest-offres';
 import { ingestSirene } from './steps/ingest-sirene';
 import { matchOffres } from './steps/match-offres';
+import { computeSignals } from './steps/signals';
 
 export const program = new Command('pipeline').description('Pipeline de données Novi');
 
@@ -63,7 +64,12 @@ program
   .action(async (opts: { limit?: number; siren?: string }) => {
     await enrichGithub(getDb(), opts);
   });
-program.command('signals').action(notImplemented('signals'));
+program
+  .command('signals')
+  .description('Recalcule les signaux dérivés')
+  .action(async () => {
+    await computeSignals(getDb());
+  });
 program
   .command('run')
   .command('all')
