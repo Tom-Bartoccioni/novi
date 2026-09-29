@@ -5,3 +5,4 @@ export * from './sources/france-travail';
 export * from './sources/recherche-entreprises';
 export * from './steps/ingest-offres';
 export * from './steps/ingest-sirene';
+export * from './steps/match-offres';

@@ -3,6 +3,7 @@ import { Command } from 'commander';
 import { log } from './lib/logger';
 import { ingestOffres } from './steps/ingest-offres';
 import { ingestSirene } from './steps/ingest-sirene';
+import { matchOffres } from './steps/match-offres';
 
 export const program = new Command('pipeline').description('Pipeline de données Novi');
 
@@ -26,7 +27,13 @@ ingest
     await ingestOffres(getDb(), opts);
   });
 
-program.command('match').command('offres').option('--force').action(notImplemented('match offres'));
+program
+  .command('match')
+  .command('offres')
+  .option('--force', 'retraiter aussi les offres déjà rattachées')
+  .action(async (opts: { force?: boolean }) => {
+    await matchOffres(getDb(), opts);
+  });
 program
   .command('discover')
   .command('websites')
