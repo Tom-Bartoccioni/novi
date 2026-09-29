@@ -1,5 +1,7 @@
+import { getDb } from '@novi/db';
 import { Command } from 'commander';
 import { log } from './lib/logger';
+import { ingestSirene } from './steps/ingest-sirene';
 
 export const program = new Command('pipeline').description('Pipeline de données Novi');
 
@@ -12,7 +14,9 @@ ingest
   .command('sirene')
   .option('-d, --departement <code>', 'département', '06')
   .option('--limit <n>', 'nombre max', Number)
-  .action(notImplemented('ingest sirene'));
+  .action(async (opts: { departement: string; limit?: number }) => {
+    await ingestSirene(getDb(), opts);
+  });
 ingest
   .command('offres')
   .option('-d, --departement <code>', 'département', '06')
