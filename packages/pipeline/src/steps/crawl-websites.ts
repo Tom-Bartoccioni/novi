@@ -100,6 +100,8 @@ export function visibleText(html: string): string {
           walk(child);
           flush();
         } else {
+          // « <a>React</a><a>Vue</a> » ne doit pas donner « ReactVue », mais « <b>Vue</b>. » doit rester « Vue. ».
+          if (current && !/\s$/.test(current)) current += ' ';
           walk(child);
         }
       }
