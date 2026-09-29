@@ -1,19 +1,15 @@
 import { getDb } from '@novi/db';
 import { Command } from 'commander';
-import { log } from './lib/logger';
 import { crawlWebsites } from './steps/crawl-websites';
 import { discoverWebsites } from './steps/discover-websites';
 import { enrichGithub } from './steps/enrich-github';
 import { ingestOffres } from './steps/ingest-offres';
 import { ingestSirene } from './steps/ingest-sirene';
 import { matchOffres } from './steps/match-offres';
+import { runAll } from './steps/run-all';
 import { computeSignals } from './steps/signals';
 
 export const program = new Command('pipeline').description('Pipeline de données Novi');
-
-const notImplemented = (name: string) => async () => {
-  log(`${name} : non implémenté`);
-};
 
 const ingest = program.command('ingest').description('Ingestion des sources');
 ingest
@@ -74,6 +70,8 @@ program
   .command('run')
   .command('all')
   .option('-d, --departement <code>', 'département', '06')
-  .action(notImplemented('run all'));
+  .action(async (opts: { departement: string }) => {
+    await runAll(getDb(), opts);
+  });
 
 program.parseAsync(process.argv);

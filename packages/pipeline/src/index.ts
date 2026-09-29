@@ -1,6 +1,7 @@
 export * from './lib/http';
 export * from './lib/rate-limit';
 export * from './lib/run';
+export * from './sources/adresse';
 export * from './sources/france-travail';
 export * from './sources/github';
 export * from './sources/overpass';
@@ -11,4 +12,5 @@ export * from './steps/enrich-github';
 export * from './steps/ingest-offres';
 export * from './steps/ingest-sirene';
 export * from './steps/match-offres';
+export * from './steps/run-all';
 export * from './steps/signals';
