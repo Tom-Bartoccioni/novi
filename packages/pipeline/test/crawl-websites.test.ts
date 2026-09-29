@@ -32,6 +32,35 @@ describe('visibleText', () => {
     );
     expect(text).toBe('Bonjour le\nmonde.');
   });
+
+  it('keeps the text of inline tags inside a block', () => {
+    const text = visibleText(
+      '<html><body><p>Notre stack : <strong>React</strong>, <code>Go</code> et <em>PostgreSQL</em></p></body></html>',
+    );
+    expect(text).toBe('Notre stack : React, Go et PostgreSQL');
+  });
+
+  it('keeps text placed directly inside sections and main, one line per block', () => {
+    const text = visibleText(
+      '<html><body><section><h2>Titre</h2>Texte de section <b>Rust</b> et Python.</section><main>Nous utilisons Kubernetes.</main></body></html>',
+    );
+    expect(text.split('\n')).toEqual([
+      'Titre',
+      'Texte de section Rust et Python.',
+      'Nous utilisons Kubernetes.',
+    ]);
+  });
+
+  it('emits one line per list item', () => {
+    expect(visibleText('<html><body><ul><li>React</li><li>Vue</li></ul></body></html>')).toBe('React\nVue');
+  });
+
+  it('removes scripts even when nested inside blocks', () => {
+    const text = visibleText(
+      '<html><body><div><script>window.x = "Angular"</script><p>Nous aimons <b>Vue</b>.</p></div></body></html>',
+    );
+    expect(text).toBe('Nous aimons Vue.');
+  });
 });
 
 describe('extractLinks', () => {
