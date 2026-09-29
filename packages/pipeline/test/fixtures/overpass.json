@@ -20,6 +20,13 @@
       "lat": 43.55,
       "lon": 7.01,
       "tags": { "name": "Boulangerie", "shop": "bakery", "website": "https://boulangerie.example" }
+    },
+    {
+      "type": "node",
+      "id": 4,
+      "lat": 43.61988,
+      "lon": 7.0373,
+      "tags": { "name": "Côteweb", "office": "company", "website": "https://coteweb.fr" }
     }
   ]
 }
