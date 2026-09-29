@@ -2,6 +2,7 @@ import { normalizeCompanyName, significantWords, slugify, stripAccents } from '@
 import { companies, type Db, jobOffers } from '@novi/db';
 import * as cheerio from 'cheerio';
 import { and, eq, isNotNull, isNull, or } from 'drizzle-orm';
+import pLimit from 'p-limit';
 import { fetchText } from '../lib/http';
 import { log, warn } from '../lib/logger';
 import { createLimiter } from '../lib/rate-limit';
@@ -71,7 +72,7 @@ export function verifyHomepage(html: string, c: NameFields, url?: string): boole
   return [...words].some((w) => text.includes(w)) || slugs.some((s) => text.replace(/\s+/g, '').includes(s));
 }
 
-const guessLimiter = createLimiter(4);
+const guessLimiter = createLimiter(8);
 
 export type Homepage = { url: string; html: string };
 
@@ -121,6 +122,7 @@ export type DiscoverOptions = {
   osm?: OsmBusiness[];
   fetchOsm?: (bbox: BBox) => Promise<OsmBusiness[]>;
   fetchHomepage?: (url: string) => Promise<Homepage | null>;
+  concurrency?: number;
 };
 
 const stripTrailingSlash = (url: string) => url.replace(/\/+$/, '');
@@ -174,39 +176,52 @@ export function discoverWebsites(db: Db, opts: DiscoverOptions): Promise<RunResu
       ctx.stats.fromOsm = 0;
       ctx.stats.fromGuess = 0;
 
-      for (const c of targets) {
-        ctx.stats.processed += 1;
-        try {
-          let found: { website: string; source: 'offre' | 'osm' | 'devinette'; confidence: number } | null =
-            null;
-          const fromOffer = offerUrls.get(c.siren);
-          if (fromOffer) found = { website: fromOffer, source: 'offre', confidence: 0.9 };
-          if (!found) {
-            const b = matchOsmBusiness(c, osm);
-            if (b) found = { website: b.website, source: 'osm', confidence: 0.8 };
-          }
-          if (!found) {
-            for (const url of candidateDomains(c)) {
-              const page = await fetchHomepage(url);
-              if (page && verifyHomepage(page.html, c, page.url)) {
-                found = { website: stripTrailingSlash(page.url), source: 'devinette', confidence: 0.6 };
-                break;
+      const limit = pLimit(opts.concurrency ?? 5);
+      await Promise.all(
+        targets.map((c) =>
+          limit(async () => {
+            ctx.stats.processed += 1;
+            if (ctx.stats.processed % 50 === 0) log(`${ctx.stats.processed}/${targets.length}`);
+            try {
+              let found: {
+                website: string;
+                source: 'offre' | 'osm' | 'devinette';
+                confidence: number;
+              } | null = null;
+              const fromOffer = offerUrls.get(c.siren);
+              if (fromOffer) found = { website: fromOffer, source: 'offre', confidence: 0.9 };
+              if (!found) {
+                const b = matchOsmBusiness(c, osm);
+                if (b) found = { website: b.website, source: 'osm', confidence: 0.8 };
               }
+              if (!found) {
+                for (const url of candidateDomains(c)) {
+                  const page = await fetchHomepage(url);
+                  if (page && verifyHomepage(page.html, c, page.url)) {
+                    found = { website: stripTrailingSlash(page.url), source: 'devinette', confidence: 0.6 };
+                    break;
+                  }
+                }
+              }
+              if (!found) return;
+              db.update(companies)
+                .set({
+                  website: found.website,
+                  websiteSource: found.source,
+                  websiteConfidence: found.confidence,
+                })
+                .where(eq(companies.siren, c.siren))
+                .run();
+              ctx.stats.updated += 1;
+              if (found.source === 'offre') ctx.stats.fromOffers = (ctx.stats.fromOffers ?? 0) + 1;
+              else if (found.source === 'osm') ctx.stats.fromOsm = (ctx.stats.fromOsm ?? 0) + 1;
+              else ctx.stats.fromGuess = (ctx.stats.fromGuess ?? 0) + 1;
+            } catch (err) {
+              ctx.error(c.siren, err);
             }
-          }
-          if (!found) continue;
-          db.update(companies)
-            .set({ website: found.website, websiteSource: found.source, websiteConfidence: found.confidence })
-            .where(eq(companies.siren, c.siren))
-            .run();
-          ctx.stats.updated += 1;
-          if (found.source === 'offre') ctx.stats.fromOffers += 1;
-          else if (found.source === 'osm') ctx.stats.fromOsm += 1;
-          else ctx.stats.fromGuess += 1;
-        } catch (err) {
-          ctx.error(c.siren, err);
-        }
-      }
+          }),
+        ),
+      );
     },
   );
 }
