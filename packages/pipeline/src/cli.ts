@@ -50,7 +50,8 @@ program
   .option('--force', 'réanalyser même si crawlé il y a moins de 30 jours')
   .option('--limit <n>', 'nombre max', Number)
   .option('--siren <siren>', 'une seule entreprise')
-  .action(async (opts: { force?: boolean; limit?: number; siren?: string }) => {
+  .option('--concurrency <n>', 'sites analysés en parallèle', Number, 5)
+  .action(async (opts: { force?: boolean; limit?: number; siren?: string; concurrency?: number }) => {
     await crawlWebsites(getDb(), opts);
   });
 program

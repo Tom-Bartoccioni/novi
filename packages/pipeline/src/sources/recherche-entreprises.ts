@@ -1,8 +1,9 @@
 import type { NewCompany } from '@novi/db';
 import { z } from 'zod';
-import { fetchJson } from '../lib/http';
+import { fetchJson, HttpError } from '../lib/http';
 import { warn } from '../lib/logger';
 import { createLimiter } from '../lib/rate-limit';
+import { withRetry } from '../lib/retry';
 
 const BASE_URL = 'https://recherche-entreprises.api.gouv.fr/search';
 export const PER_PAGE = 25;
@@ -71,6 +72,12 @@ export type SearchPage = z.infer<typeof searchPageSchema>;
 
 const limiter = createLimiter(6);
 
+/** 429, erreurs serveur et pannes réseau (fetch failed, délai dépassé) méritent une nouvelle tentative. */
+export function isSireneRetryable(err: unknown): boolean {
+  if (err instanceof HttpError) return err.status === 429 || err.status >= 500;
+  return err instanceof TypeError || (err as { name?: string } | null)?.name === 'AbortError';
+}
+
 export async function fetchSearchPage(params: {
   departement: string;
   nafCode: string;
@@ -85,7 +92,10 @@ export async function fetchSearchPage(params: {
   url.searchParams.set('est_entrepreneur_individuel', 'false');
   url.searchParams.set('per_page', String(PER_PAGE));
   url.searchParams.set('page', String(params.page));
-  const { data } = await limiter(() => fetchJson<unknown>(url.toString(), { timeoutMs: 20_000 }));
+  const { data } = await withRetry(
+    () => limiter(() => fetchJson<unknown>(url.toString(), { timeoutMs: 20_000 })),
+    { retries: 3, isRetryable: isSireneRetryable, baseDelayMs: 2_000 },
+  );
   return searchPageSchema.parse(data);
 }
 

@@ -31,7 +31,18 @@ pnpm pipeline run all --departement 06
 | `pnpm pipeline signals` | Recalcule les signaux dérivés |
 | `pnpm pipeline run all -d 06` | Enchaîne tout |
 
-Options communes : `--limit N`, `--force`, `--siren X`. Chaque run est journalisé dans la table `crawl_runs`.
+Options par commande :
+
+| Commande | Options |
+|---|---|
+| `ingest sirene`, `ingest offres` | `-d, --departement <code>` (défaut `06`), `--limit N` |
+| `match offres` | `--force` : retraite aussi les offres déjà rattachées, ne détache jamais |
+| `discover websites` | `--limit N`, `--siren X`, `--concurrency N` (défaut 5), `--force` : refait les sites trouvés automatiquement, jamais ceux renseignés manuellement |
+| `crawl websites` | `--limit N`, `--siren X`, `--concurrency N` (défaut 5), `--force` : réanalyse même si le site a été crawlé il y a moins de 30 jours |
+| `enrich github` | `--limit N`, `--siren X` |
+| `run all` | `-d, --departement <code>` (défaut `06`) ; une étape en échec n'arrête pas les suivantes et le code de sortie vaut 1 |
+
+Chaque run est journalisé dans la table `crawl_runs`.
 
 ## Développement
 
