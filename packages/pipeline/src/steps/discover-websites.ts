@@ -3,7 +3,7 @@ import { companies, type Db, jobOffers } from '@novi/db';
 import * as cheerio from 'cheerio';
 import { and, eq, isNotNull, isNull, or } from 'drizzle-orm';
 import { fetchText } from '../lib/http';
-import { log } from '../lib/logger';
+import { log, warn } from '../lib/logger';
 import { createLimiter } from '../lib/rate-limit';
 import { type RunResult, withRun } from '../lib/run';
 import { type BBox, fetchOsmBusinesses, matchOsmBusiness, type OsmBusiness } from '../sources/overpass';
@@ -76,11 +76,13 @@ export type DiscoverOptions = {
   siren?: string;
   offerUrls?: Map<string, string>;
   osm?: OsmBusiness[];
+  fetchOsm?: (bbox: BBox) => Promise<OsmBusiness[]>;
   fetchHomepage?: (url: string) => Promise<string | null>;
 };
 
 export function discoverWebsites(db: Db, opts: DiscoverOptions): Promise<RunResult> {
   const fetchHomepage = opts.fetchHomepage ?? defaultFetchHomepage;
+  const fetchOsm = opts.fetchOsm ?? fetchOsmBusinesses;
   return withRun(
     db,
     'discover websites',
@@ -105,8 +107,15 @@ export function discoverWebsites(db: Db, opts: DiscoverOptions): Promise<RunResu
       let osm = opts.osm ?? null;
       if (!osm) {
         const bbox = bboxOf(targets);
-        osm = bbox ? await fetchOsmBusinesses(bbox) : [];
-        log(`OpenStreetMap : ${osm.length} bureaux avec site web dans la zone`);
+        try {
+          osm = bbox ? await fetchOsm(bbox) : [];
+          log(`OpenStreetMap : ${osm.length} bureaux avec site web dans la zone`);
+        } catch (err) {
+          ctx.error(undefined, err);
+          warn('OpenStreetMap indisponible, on continue sans');
+          ctx.stats.osmUnavailable = 1;
+          osm = [];
+        }
       }
       ctx.stats.fromOffers = 0;
       ctx.stats.fromOsm = 0;

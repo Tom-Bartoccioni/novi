@@ -1,6 +1,7 @@
 import { distanceKm, normalizeCompanyName, trigramSimilarity } from '@novi/core';
 import { z } from 'zod';
-import { fetchJson } from '../lib/http';
+import { fetchJson, HttpError } from '../lib/http';
+import { sleep } from '../lib/rate-limit';
 
 const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
 
@@ -42,10 +43,13 @@ export function parseOverpass(json: unknown): OsmBusiness[] {
 
 export type BBox = { south: number; west: number; north: number; east: number };
 
-/** Une seule requête pour toute la zone : bureaux et artisans avec un site web. */
-export async function fetchOsmBusinesses(bbox: BBox): Promise<OsmBusiness[]> {
-  const b = `${bbox.south},${bbox.west},${bbox.north},${bbox.east}`;
-  const query = `[out:json][timeout:180];(nwr["website"]["name"]["office"](${b});nwr["website"]["name"]["craft"](${b}););out center tags;`;
+const OVERPASS_RETRY_DELAY_MS = 30_000;
+
+function isRetryable(err: unknown): boolean {
+  return !(err instanceof HttpError) || err.status === 429 || err.status === 504;
+}
+
+async function queryOverpass(query: string): Promise<OsmBusiness[]> {
   const { data } = await fetchJson<unknown>(OVERPASS_URL, {
     method: 'POST',
     headers: { 'content-type': 'application/x-www-form-urlencoded' },
@@ -53,6 +57,19 @@ export async function fetchOsmBusinesses(bbox: BBox): Promise<OsmBusiness[]> {
     timeoutMs: 200_000,
   });
   return parseOverpass(data);
+}
+
+/** Une seule requête pour toute la zone : bureaux et artisans avec un site web. Réessaie une fois après 30 s en cas d'erreur réseau, 429 ou 504. */
+export async function fetchOsmBusinesses(bbox: BBox): Promise<OsmBusiness[]> {
+  const b = `${bbox.south},${bbox.west},${bbox.north},${bbox.east}`;
+  const query = `[out:json][timeout:180];(nwr["website"]["name"]["office"](${b});nwr["website"]["name"]["craft"](${b}););out center tags;`;
+  try {
+    return await queryOverpass(query);
+  } catch (err) {
+    if (!isRetryable(err)) throw err;
+    await sleep(OVERPASS_RETRY_DELAY_MS);
+    return queryOverpass(query);
+  }
 }
 
 export type NamedCompany = {
