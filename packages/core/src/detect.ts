@@ -18,14 +18,10 @@ function escapeRegex(input: string): string {
   return input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-/** Frontière de mot tolérante aux caractères comme "#", "+" ou "." en fin d'alias. */
+/** Frontière de mot stricte des deux côtés, tolérante aux caractères comme "#" ou "+" en fin d'alias. */
 function aliasRegex(alias: string): RegExp {
   const escaped = escapeRegex(fold(alias));
-  const startsWithWord = /^[a-z0-9]/.test(alias);
-  const endsWithWord = /[a-z0-9]$/.test(fold(alias));
-  const start = startsWithWord ? '(?<![a-z0-9])' : '';
-  const end = endsWithWord ? '(?![a-z0-9])' : '(?![a-z0-9+#])';
-  return new RegExp(`${start}${escaped}${end}`, 'i');
+  return new RegExp(`(?<![a-z0-9])${escaped}(?![a-z0-9+#])`, 'i');
 }
 
 type CompiledTag = { tag: TechTag; aliases: RegExp[]; context: string[] | null };
@@ -95,9 +91,19 @@ export function mergeDetections(...lists: Detection[][]): Detection[] {
   return [...best.values()];
 }
 
+const esnCache = new WeakMap<string[], RegExp[]>();
+
+function compileEsnKeywords(keywords: string[]): RegExp[] {
+  const cached = esnCache.get(keywords);
+  if (cached) return cached;
+  const compiled = keywords.map(aliasRegex);
+  esnCache.set(keywords, compiled);
+  return compiled;
+}
+
 /** Renvoie la première phrase contenant un mot-clé ESN, sinon null. */
 export function detectEsn(text: string, keywords: string[]): string | null {
-  const regexes = keywords.map(aliasRegex);
+  const regexes = compileEsnKeywords(keywords);
   for (const sentence of splitSentences(text)) {
     const folded = fold(sentence);
     if (regexes.some((re) => re.test(folded))) return truncate(sentence);

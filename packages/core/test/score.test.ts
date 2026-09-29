@@ -102,4 +102,21 @@ describe('scoreCompany', () => {
     // 7 + 15.33 + 15 = 37.33 -> 37
     expect(r.score).toBe(37);
   });
+  it('ignores duplicate signal rows of the same kind and negative distances', () => {
+    const r = scoreCompany(
+      profile,
+      {
+        ...base,
+        headcountRange: null,
+        signals: [
+          { kind: 'github_active', value: 1 },
+          { kind: 'github_active', value: 1 },
+          { kind: 'github_active', value: 1 },
+        ],
+      },
+      -5,
+    );
+    expect(r.lines.filter((l) => l.label === 'GitHub actif')).toHaveLength(1);
+    expect(r.lines).toContainEqual({ label: '0 km', points: 20 });
+  });
 });
