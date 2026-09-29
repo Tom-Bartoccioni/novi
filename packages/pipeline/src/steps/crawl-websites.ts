@@ -33,18 +33,83 @@ const TECH_PAGE_WORDS = [
   'propos',
 ];
 
+/** Éléments qui commencent une nouvelle ligne de texte ; tout le reste est traité comme du texte en ligne. */
+const BLOCK = new Set([
+  'p',
+  'h1',
+  'h2',
+  'h3',
+  'h4',
+  'h5',
+  'h6',
+  'li',
+  'td',
+  'th',
+  'dd',
+  'dt',
+  'blockquote',
+  'figcaption',
+  'div',
+  'section',
+  'main',
+  'article',
+  'header',
+  'footer',
+  'nav',
+  'aside',
+  'ul',
+  'ol',
+  'table',
+  'tr',
+  'form',
+  'label',
+  'button',
+  'pre',
+  'address',
+  'details',
+  'summary',
+  'body',
+  'br',
+  'hr',
+]);
+
+/** Nœud DOM de cheerio (`AnyNode` de domhandler, non réexporté par cheerio). */
+type DomNode = Exclude<Parameters<typeof cheerio.load>[0], string | Buffer | unknown[]>;
+
+/**
+ * Texte visible d'une page : une ligne par élément bloc, chaque ligne contenant le texte complet de
+ * ses descendants en ligne (`<strong>`, `<em>`, `<code>`, `<a>`…). Les blocs imbriqués font leurs propres lignes.
+ */
 export function visibleText(html: string): string {
   const $ = cheerio.load(html);
   $('script, style, noscript, svg, template').remove();
-  const blocks: string[] = [];
-  $('body')
-    .find('p, h1, h2, h3, h4, h5, h6, li, td, th, dd, dt, blockquote, figcaption, span, a, div')
-    .each((_, el) => {
-      const own = $(el).clone().children().remove().end().text().replace(/\s+/g, ' ').trim();
-      if (own) blocks.push(own);
-    });
-  if (blocks.length === 0) return $('body').text().replace(/\s+/g, ' ').trim();
-  return blocks.join('\n');
+  const lines: string[] = [];
+  let current = '';
+  const flush = () => {
+    const line = current.replace(/\s+/g, ' ').trim();
+    if (line) lines.push(line);
+    current = '';
+  };
+  const walk = (node: DomNode): void => {
+    for (const child of $(node).contents().toArray()) {
+      if (child.type === 'text') {
+        current += child.data;
+      } else if (child.type === 'tag') {
+        if (BLOCK.has(child.name)) {
+          flush();
+          walk(child);
+          flush();
+        } else {
+          walk(child);
+        }
+      }
+    }
+  };
+  const root = $('body').get(0) ?? $.root().get(0);
+  if (!root) return '';
+  walk(root);
+  flush();
+  return lines.join('\n');
 }
 
 export type Link = { href: string; text: string };
