@@ -1,4 +1,4 @@
-import { significantWords, slugify, stripAccents } from '@novi/core';
+import { normalizeCompanyName, significantWords, slugify, stripAccents } from '@novi/core';
 import { companies, type Db, jobOffers } from '@novi/db';
 import * as cheerio from 'cheerio';
 import { and, eq, isNotNull, isNull, or } from 'drizzle-orm';
@@ -12,9 +12,35 @@ const TLDS = ['com', 'fr', 'io', 'eu', 'tech'];
 
 export type NameFields = { name: string; legalName: string; tradeNames: string[] };
 
+/** Marqueurs (texte plié : sans accents, minuscules) d'une page de domaine parqué ou à vendre. */
+export const PARKED_MARKERS = [
+  'a vendre',
+  'for sale',
+  'domain for sale',
+  'buy this domain',
+  'parked',
+  'parking',
+  'sedo',
+  'godaddy',
+  'hugedomains',
+  'dan.com',
+  'afternic',
+  'this domain',
+  'ce domaine',
+  'acheter ce domaine',
+];
+
+/** Slug compact puis, pour les noms de plusieurs mots, slug avec tirets. */
+function slugVariants(name: string): string[] {
+  const normalized = normalizeCompanyName(name);
+  const plain = normalized.replace(/\s+/g, '');
+  const hyphenated = normalized.replace(/\s+/g, '-');
+  return hyphenated === plain ? [plain] : [plain, hyphenated];
+}
+
 export function candidateDomains(c: NameFields): string[] {
   const bases = [
-    ...new Set([...c.tradeNames, c.name, c.legalName].map(slugify).filter((s) => s.length >= 3)),
+    ...new Set([...c.tradeNames, c.name, c.legalName].flatMap(slugVariants).filter((s) => s.length >= 3)),
   ];
   const out: string[] = [];
   for (const base of bases) for (const tld of TLDS) out.push(`https://${base}.${tld}`);
@@ -26,6 +52,7 @@ export function verifyHomepage(html: string, c: NameFields): boolean {
   const text = stripAccents(
     `${$('title').text()} ${$('meta[name="description"]').attr('content') ?? ''} ${$('meta[property="og:title"]').attr('content') ?? ''}`,
   ).toLowerCase();
+  if (PARKED_MARKERS.some((m) => text.includes(m))) return false;
   const words = new Set([...c.tradeNames, c.name, c.legalName].flatMap(significantWords));
   const slugs = [...c.tradeNames, c.name].map(slugify).filter((s) => s.length >= 4);
   return [...words].some((w) => text.includes(w)) || slugs.some((s) => text.replace(/\s+/g, '').includes(s));

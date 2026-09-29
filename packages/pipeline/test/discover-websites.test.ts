@@ -3,7 +3,12 @@ import { join } from 'node:path';
 import { companies, createDb, migrateAndSeed } from '@novi/db';
 import { describe, expect, it } from 'vitest';
 import { matchOsmBusiness, normalizeWebsite, parseOverpass } from '../src/sources/overpass';
-import { candidateDomains, discoverWebsites, verifyHomepage } from '../src/steps/discover-websites';
+import {
+  candidateDomains,
+  discoverWebsites,
+  PARKED_MARKERS,
+  verifyHomepage,
+} from '../src/steps/discover-websites';
 
 const overpass = parseOverpass(
   JSON.parse(readFileSync(join(import.meta.dirname, 'fixtures/overpass.json'), 'utf8')),
@@ -58,6 +63,15 @@ describe('candidateDomains', () => {
     expect(domains).toContain('https://clikenwebpro.com');
     expect(new Set(domains).size).toBe(domains.length);
   });
+  it('also tries the hyphenated slug after the plain one for multi-word names', () => {
+    const domains = candidateDomains({ name: 'Ava6 Mediterranee', legalName: 'AVAMED', tradeNames: [] });
+    const bases = [...new Set(domains.map((d) => d.replace(/^https:\/\//, '').replace(/\.[a-z]+$/, '')))];
+    expect(bases).toEqual(['ava6mediterranee', 'ava6-mediterranee', 'avamed']);
+    expect(domains).toContain('https://ava6mediterranee.com');
+    expect(domains).toContain('https://ava6-mediterranee.com');
+    expect(domains).toContain('https://avamed.com');
+    expect(new Set(domains).size).toBe(domains.length);
+  });
 });
 
 describe('verifyHomepage', () => {
@@ -68,6 +82,18 @@ describe('verifyHomepage', () => {
     expect(verifyHomepage(html, { name: 'Boulangerie Dupont', legalName: 'DUPONT', tradeNames: [] })).toBe(
       false,
     );
+  });
+  it('rejects parked domains', () => {
+    const ace = { name: 'Ace Software', legalName: 'ACE SOFTWARE', tradeNames: [] };
+    expect(verifyHomepage('<title>acesoftware.com - Ce site web est à vendre !</title>', ace)).toBe(false);
+    expect(verifyHomepage('<title>Buy this domain - acesoftware.com</title>', ace)).toBe(false);
+    expect(verifyHomepage('<title>Ace Software - editeur de logiciels a Sophia Antipolis</title>', ace)).toBe(
+      true,
+    );
+    const inotekk = { name: 'Inotekk', legalName: 'INOTEKK', tradeNames: [] };
+    expect(verifyHomepage('<title>Inotekk.com — This domain is parked</title>', inotekk)).toBe(false);
+    expect(verifyHomepage('<title>Logiciels sur-mesure, Data & IA | Inotekk</title>', inotekk)).toBe(true);
+    expect(PARKED_MARKERS).toContain('a vendre');
   });
 });
 

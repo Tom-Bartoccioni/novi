@@ -31,4 +31,9 @@ describe('significantWords', () => {
     expect(significantWords('Les Ateliers du Code')).toEqual(['ateliers', 'code']);
     expect(significantWords('WEB PRO')).toEqual([]);
   });
+  it('drops generic business and tech words', () => {
+    expect(significantWords('ACE SOFTWARE')).toEqual([]);
+    expect(significantWords('AVA6 MEDITERRANEE')).toEqual(['ava6']);
+    expect(significantWords('Riviera Cloud Systems')).toEqual([]);
+  });
 });
