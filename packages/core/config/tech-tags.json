@@ -99,7 +99,7 @@
     "slug": "rails",
     "label": "Ruby on Rails",
     "category": "framework",
-    "aliases": ["ruby on rails", "rails", "ror"],
+    "aliases": ["ruby on rails", "rails"],
     "fingerprints": ["csrf-param", "x-powered-by: phusion passenger"]
   },
   {
@@ -107,7 +107,18 @@
     "label": "Swift",
     "category": "language",
     "aliases": ["swift"],
-    "contextRequired": ["ios", "apple", "swiftui", "xcode", "macos", "développeur", "developer", "mobile"]
+    "contextRequired": [
+      "ios",
+      "apple",
+      "swiftui",
+      "xcode",
+      "macos",
+      "développeur",
+      "developer",
+      "mobile",
+      "kotlin",
+      "android"
+    ]
   },
   {
     "slug": "objective-c",
@@ -199,6 +210,23 @@
     "label": "Vue.js",
     "category": "framework",
     "aliases": ["vue", "vue.js", "vuejs"],
+    "contextRequired": [
+      "vue.js",
+      "vuejs",
+      "vue 3",
+      "vue 2",
+      "nuxt",
+      "javascript",
+      "typescript",
+      "front",
+      "framework",
+      "react",
+      "angular",
+      "développeur",
+      "developer",
+      "pinia",
+      "vuex"
+    ],
     "fingerprints": ["data-v-app", "__vue__", "data-v-"]
   },
   {
@@ -314,7 +342,15 @@
       "typescript",
       "backend",
       "express",
-      "npm"
+      "npm",
+      "react",
+      "vue",
+      "angular",
+      "front",
+      "api",
+      "fullstack",
+      "full stack",
+      "full-stack"
     ],
     "fingerprints": ["x-powered-by: express"]
   },
@@ -451,7 +487,7 @@
     "slug": "elasticsearch",
     "label": "Elasticsearch",
     "category": "database",
-    "aliases": ["elasticsearch", "elastic search", "opensearch", "elastic stack", "elk"]
+    "aliases": ["elasticsearch", "elastic search", "opensearch", "elastic stack", "elk stack"]
   },
   { "slug": "cassandra", "label": "Cassandra", "category": "database", "aliases": ["cassandra", "scylladb"] },
   {
@@ -547,7 +583,7 @@
     "slug": "docker",
     "label": "Docker",
     "category": "tool",
-    "aliases": ["docker", "conteneurs", "containers", "docker compose"]
+    "aliases": ["docker", "docker compose"]
   },
   {
     "slug": "kubernetes",
@@ -657,7 +693,6 @@
       "internet des objets",
       "internet of things",
       "objets connectés",
-      "lora",
       "lorawan",
       "zigbee",
       "mqtt"
@@ -673,8 +708,6 @@
       "apprentissage automatique",
       "data science",
       "intelligence artificielle",
-      "ia",
-      "ai",
       "llm",
       "computer vision",
       "vision par ordinateur",
@@ -753,7 +786,7 @@
     "slug": "fintech",
     "label": "Fintech",
     "category": "domain",
-    "aliases": ["fintech", "paiement", "payments", "banque en ligne", "regtech"]
+    "aliases": ["fintech", "payments", "banque en ligne", "regtech"]
   },
   {
     "slug": "healthtech",
@@ -791,7 +824,6 @@
     "label": "Géospatial",
     "category": "domain",
     "aliases": [
-      "sig",
       "gis",
       "géomatique",
       "cartographie",
@@ -819,7 +851,7 @@
     "slug": "websocket",
     "label": "WebSocket",
     "category": "tool",
-    "aliases": ["websocket", "websockets", "socket.io", "temps réel", "real-time", "realtime"]
+    "aliases": ["websocket", "websockets", "socket.io", "realtime"]
   },
   {
     "slug": "microservices",

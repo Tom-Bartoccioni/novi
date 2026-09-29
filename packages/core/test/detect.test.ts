@@ -42,6 +42,34 @@ describe('detectTechs', () => {
     const found = detectTechs('React ici. React là.', tags, 0.5);
     expect(found.filter((d) => d.slug === 'react')).toHaveLength(1);
   });
+  it('does not match .net inside e-mail addresses or domains', () => {
+    expect(
+      detectTechs('Contactez-nous sur contact@monentreprise.net ou www.exemple.net', tags, 0.5).map(
+        (d) => d.slug,
+      ),
+    ).not.toContain('dotnet');
+    expect(detectTechs('Développeur .NET Core et C#/.NET', tags, 0.5).map((d) => d.slug)).toContain('dotnet');
+  });
+  it('does not tag C when the text says C++ or C#', () => {
+    const cpp = detectTechs('Développeur C++ senior', tags, 0.5).map((d) => d.slug);
+    expect(cpp).toContain('cpp');
+    expect(cpp).not.toContain('c');
+    const cs = detectTechs('Développeur C#/.NET', tags, 0.5).map((d) => d.slug);
+    expect(cs).toContain('csharp');
+    expect(cs).not.toContain('c');
+  });
+  it('ignores common French words that used to be aliases', () => {
+    expect(
+      detectTechs("J'ai rejoint l'équipe. J’ai adoré la vue sur la mer.", tags, 0.5).map((d) => d.slug),
+    ).toEqual([]);
+    expect(
+      detectTechs('Paiement en 3 fois, conteneurs maritimes, temps réel.', tags, 0.5).map((d) => d.slug),
+    ).toEqual([]);
+  });
+  it('detects Node in a stack list next to React', () => {
+    expect(detectTechs('Stack : React / Node / Postgres', tags, 0.5).map((d) => d.slug)).toContain('nodejs');
+    expect(detectTechs('Framework Vue 3 avec Pinia', tags, 0.5).map((d) => d.slug)).toContain('vue');
+  });
 });
 
 describe('detectFingerprints', () => {

@@ -37,9 +37,10 @@ export function scoreCompany(profile: ScoreProfile, company: ScoreCompany, dista
   }
 
   // Proximité.
-  if (profile.radiusKm > 0 && distanceKm < profile.radiusKm) {
-    const points = round1(DISTANCE_MAX * (1 - distanceKm / profile.radiusKm));
-    lines.push({ label: `${Math.round(distanceKm)} km`, points });
+  const clampedDistanceKm = Math.max(0, distanceKm);
+  if (profile.radiusKm > 0 && clampedDistanceKm < profile.radiusKm) {
+    const points = round1(DISTANCE_MAX * (1 - clampedDistanceKm / profile.radiusKm));
+    lines.push({ label: `${Math.round(clampedDistanceKm)} km`, points });
   }
 
   // Taille.
@@ -65,10 +66,16 @@ export function scoreCompany(profile: ScoreProfile, company: ScoreCompany, dista
     }
   }
 
-  // Signaux récents, plafonnés.
+  // Signaux récents, plafonnés (une ligne par nature de signal, première occurrence).
+  const seenKinds = new Set<string>();
+  const dedupedSignals = company.signals.filter((s) => {
+    if (seenKinds.has(s.kind)) return false;
+    seenKinds.add(s.kind);
+    return true;
+  });
   let signalPoints = 0;
   const signalLines: ScoreLine[] = [];
-  for (const s of company.signals) {
+  for (const s of dedupedSignals) {
     if (s.kind === 'hired_last_12_months' && (s.value ?? 0) > 0) {
       signalLines.push({
         label: `A recruté sur 12 mois (${s.value} offre${(s.value ?? 0) > 1 ? 's' : ''})`,
