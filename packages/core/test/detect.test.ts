@@ -70,6 +70,24 @@ describe('detectTechs', () => {
     expect(detectTechs('Stack : React / Node / Postgres', tags, 0.5).map((d) => d.slug)).toContain('nodejs');
     expect(detectTechs('Framework Vue 3 avec Pinia', tags, 0.5).map((d) => d.slug)).toContain('vue');
   });
+  it('requires context for vite (French adverb)', () => {
+    expect(detectTechs('Pour livrer vite sans casser.', tags, 0.5).map((d) => d.slug)).not.toContain('vite');
+    expect(detectTechs('Build front avec Vite et React.', tags, 0.5).map((d) => d.slug)).toContain('vite');
+  });
+  it('does not tag javascript from the "js" suffix of Node.js', () => {
+    const slugs = detectTechs('Stack : Node.js et PostgreSQL.', tags, 0.5).map((d) => d.slug);
+    expect(slugs).not.toContain('javascript');
+    expect(slugs).toContain('nodejs');
+  });
+  it('ignores "site web" in cookie banners', () => {
+    expect(
+      detectTechs(
+        'En poursuivant votre navigation sur notre site web, vous acceptez les cookies.',
+        tags,
+        0.5,
+      ),
+    ).toEqual([]);
+  });
 });
 
 describe('detectFingerprints', () => {
@@ -91,6 +109,17 @@ describe('detectFingerprints', () => {
     const slugs = found.map((d) => d.slug);
     expect(slugs).toContain('cloudflare');
     expect(slugs).toContain('nodejs');
+  });
+  it('does not take a generic "w-nav" class for Webflow', () => {
+    expect(detectFingerprints('<div class="show-nav"></div>', {}, tags).map((d) => d.slug)).not.toContain(
+      'webflow',
+    );
+    expect(detectFingerprints('<html data-wf-site="x">', {}, tags).map((d) => d.slug)).toContain('webflow');
+  });
+  it('does not infer Linux from the server header', () => {
+    const slugs = detectFingerprints('<html></html>', { server: 'nginx/1.2' }, tags).map((d) => d.slug);
+    expect(slugs).toContain('nginx');
+    expect(slugs).not.toContain('linux');
   });
 });
 
