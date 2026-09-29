@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  allCrawlPaths,
   HEADCOUNT_LABELS,
   loadCrawlPaths,
   loadEsnKeywords,
@@ -28,7 +29,15 @@ describe('config loaders', () => {
   });
   it('esn keywords and crawl paths load', () => {
     expect(loadEsnKeywords()).toContain('portage salarial');
-    expect(loadCrawlPaths()).toContain('/carrieres');
+    const paths = loadCrawlPaths();
+    expect(paths.careers).toContain('/carrieres');
+    expect(paths.about).toContain('/a-propos');
+    expect(paths.tech).toContain('/stack');
+    expect(paths.other).toContain('/blog');
+    expect(allCrawlPaths()).toContain('/carrieres');
+    expect(allCrawlPaths()).toHaveLength(
+      paths.careers.length + paths.about.length + paths.tech.length + paths.other.length,
+    );
   });
   it('headcount labels cover INSEE codes', () => {
     expect(HEADCOUNT_LABELS['12']).toBe('20 à 49 salariés');

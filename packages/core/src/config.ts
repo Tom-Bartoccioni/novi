@@ -38,8 +38,20 @@ export function loadEsnKeywords(): string[] {
   return z.array(z.string().min(1)).parse(esnKeywordsJson);
 }
 
-export function loadCrawlPaths(): string[] {
-  return z.array(z.string().startsWith('/')).parse(crawlPathsJson);
+const pathList = z.array(z.string().startsWith('/'));
+const crawlPathsSchema = z.object({ careers: pathList, about: pathList, tech: pathList, other: pathList });
+
+/** Chemins à sonder sur un site, par famille (carrière, présentation, technique, autres). */
+export type CrawlPaths = z.infer<typeof crawlPathsSchema>;
+
+export function loadCrawlPaths(): CrawlPaths {
+  return crawlPathsSchema.parse(crawlPathsJson);
+}
+
+/** Liste plate de tous les chemins, toutes familles confondues. */
+export function allCrawlPaths(): string[] {
+  const p = loadCrawlPaths();
+  return [...p.careers, ...p.about, ...p.tech, ...p.other];
 }
 
 export const HEADCOUNT_LABELS: Record<string, string> = {

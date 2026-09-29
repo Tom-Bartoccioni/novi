@@ -140,3 +140,74 @@ describe('crawlCompany / crawlWebsites', () => {
     expect(db.select().from(signals).all()).toEqual([]);
   });
 });
+
+describe('host handling', () => {
+  it('treats www. and bare hosts as the same site', () => {
+    const links = extractLinks('<a href="https://www.inotekk.com/carrieres">x</a>', 'https://inotekk.com');
+    expect(links.internal).toContain('https://www.inotekk.com/carrieres');
+  });
+
+  it('follows the redirected www host for the rest of the crawl', async () => {
+    const db = createDb(':memory:');
+    migrateAndSeed(db);
+    db.insert(companies)
+      .values({
+        siren: '000000002',
+        name: 'Example',
+        legalName: 'EXAMPLE',
+        nafCode: '62.01Z',
+        siretLocal: 'b',
+        latitude: 43.62,
+        longitude: 7.04,
+        website: 'https://example.com',
+        websiteSource: 'manuel',
+        websiteConfidence: 1,
+      })
+      .run();
+    const requested: string[] = [];
+    const fetchPage = async (url: string) => {
+      requested.push(url);
+      if (url === 'https://example.com')
+        return page(
+          'https://www.example.com/',
+          '<html><body><a href="/nous-rejoindre">Nous rejoindre</a><p>Accueil.</p></body></html>',
+        );
+      if (url === 'https://www.example.com/nous-rejoindre')
+        return page(url, '<html><body><p>Nous cherchons un développeur Rust backend.</p></body></html>');
+      return null;
+    };
+    const result = await crawlCompany(db, '000000002', { fetchPage, robotsAllowed: async () => true });
+    expect(result.careersUrl).toBe('https://www.example.com/nous-rejoindre');
+    expect(result.detections.find((d) => d.slug === 'rust')?.confidence).toBe(0.7);
+    expect(
+      requested.every((u) => u === 'https://example.com' || u.startsWith('https://www.example.com/')),
+    ).toBe(true);
+    expect(db.select().from(companies).get()?.website).toBe('https://example.com');
+  });
+});
+
+describe('career detection by pathname', () => {
+  it('ignores career words that only appear in the hostname', () => {
+    const result = analyzeSite('https://joinly.fr', [
+      page(
+        'https://joinly.fr',
+        '<html><body><a href="/">Accueil</a><a href="/mentions-legales">Mentions</a><p>Bienvenue.</p></body></html>',
+      ),
+      page('https://joinly.fr/mentions-legales', '<html><body><p>Nous utilisons React.</p></body></html>'),
+    ]);
+    expect(result.careersUrl).toBeNull();
+    expect(result.detections.find((d) => d.slug === 'react')?.confidence).toBe(0.5);
+  });
+});
+
+describe('balanced probing', () => {
+  it('interleaves path families when nothing is known about the site', () => {
+    const pages = selectPages('https://example.com', [], []);
+    expect(pages).toHaveLength(12);
+    expect(pages[0]).toBe('https://example.com');
+    expect(pages.some((p) => ['/about', '/about-us', '/a-propos'].some((s) => p.endsWith(s)))).toBe(true);
+    expect(
+      pages.some((p) => ['/technologies', '/technologie', '/tech', '/stack'].some((s) => p.endsWith(s))),
+    ).toBe(true);
+  });
+});
