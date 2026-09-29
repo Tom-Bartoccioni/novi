@@ -154,4 +154,62 @@ describe('discoverWebsites', () => {
     expect(rows['000000004']).toMatchObject({ website: 'https://manual.example', websiteSource: 'manuel' });
     expect(fetched).not.toContain('https://manual.com');
   });
+
+  it('continues with offers and domain guessing when Overpass is unavailable', async () => {
+    const db = createDb(':memory:');
+    migrateAndSeed(db);
+    db.insert(companies)
+      .values([
+        {
+          siren: '000000001',
+          name: 'Cliken Web',
+          legalName: 'CLIKEN WEB PRO',
+          tradeNames: ['CLIKEN WEB'],
+          nafCode: '62.01Z',
+          siretLocal: 'a',
+          latitude: 43.6197,
+          longitude: 7.0373,
+        },
+        {
+          siren: '000000003',
+          name: 'Guessable',
+          legalName: 'GUESSABLE',
+          nafCode: '62.01Z',
+          siretLocal: 'c',
+          latitude: 43.5,
+          longitude: 7.0,
+        },
+      ])
+      .run();
+    const fetched: string[] = [];
+    const result = await discoverWebsites(db, {
+      force: true,
+      offerUrls: new Map([['000000001', 'https://www.cliken-web.com']]),
+      osm: undefined,
+      fetchOsm: async () => {
+        throw new Error('HTTP 504 sur overpass');
+      },
+      fetchHomepage: async (url) => {
+        fetched.push(url);
+        return url === 'https://guessable.com' ? '<title>Guessable — accueil</title>' : null;
+      },
+    });
+    expect(result.stats.errors).toBe(1);
+    expect(result.stats.osmUnavailable).toBe(1);
+    expect(result.stats.processed).toBe(2);
+    expect(result.errors).toEqual([{ message: 'HTTP 504 sur overpass' }]);
+    expect(fetched).toContain('https://guessable.com');
+    const rows = Object.fromEntries(
+      db
+        .select()
+        .from(companies)
+        .all()
+        .map((c) => [c.siren, c]),
+    );
+    expect(rows['000000001']).toMatchObject({
+      website: 'https://www.cliken-web.com',
+      websiteSource: 'offre',
+    });
+    expect(rows['000000003']).toMatchObject({ website: 'https://guessable.com', websiteSource: 'devinette' });
+  });
 });
