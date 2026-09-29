@@ -81,6 +81,128 @@ describe('findCompanyForOffer', () => {
       findCompanyForOffer(db, { employerName: 'totally different name', latitude: null, longitude: null }),
     ).toBe('000000003');
   });
+  it('matches with the legal form at the end', () => {
+    const db = setup();
+    expect(
+      findCompanyForOffer(db, { employerName: 'CLIKEN WEB PRO SAS', latitude: 43.6231, longitude: 7.0128 }),
+    ).toBe('000000001');
+  });
+  it('matches on an enseigne that differs from the name', () => {
+    const db = setup();
+    db.insert(companies)
+      .values([
+        {
+          siren: '000000004',
+          name: 'Holding Azur',
+          legalName: 'HOLDING AZUR',
+          tradeNames: ['PIXEL FORGE'],
+          nafCode: '62.01Z',
+          siretLocal: '00000000400010',
+          latitude: 43.7,
+          longitude: 7.25,
+        },
+      ])
+      .run();
+    expect(findCompanyForOffer(db, { employerName: 'Pixel Forge', latitude: 43.7, longitude: 7.25 })).toBe(
+      '000000004',
+    );
+  });
+  it('picks the closest among exact homonyms when the offer has coordinates', () => {
+    const db = setup();
+    db.insert(companies)
+      .values([
+        {
+          siren: '000000010',
+          name: 'Alpha',
+          legalName: 'ALPHA',
+          nafCode: '62.01Z',
+          siretLocal: '00000001000010',
+          latitude: 43.7102,
+          longitude: 7.262,
+        },
+        {
+          siren: '000000011',
+          name: 'Alpha',
+          legalName: 'ALPHA',
+          nafCode: '62.01Z',
+          siretLocal: '00000001100010',
+          latitude: 43.5808,
+          longitude: 7.1239,
+        },
+      ])
+      .run();
+    expect(findCompanyForOffer(db, { employerName: 'ALPHA', latitude: 43.58, longitude: 7.12 })).toBe(
+      '000000011',
+    );
+    expect(findCompanyForOffer(db, { employerName: 'ALPHA', latitude: 43.71, longitude: 7.26 })).toBe(
+      '000000010',
+    );
+  });
+  it('refuses exact homonyms when the offer has no coordinates', () => {
+    const db = setup();
+    db.insert(companies)
+      .values([
+        {
+          siren: '000000010',
+          name: 'Alpha',
+          legalName: 'ALPHA',
+          nafCode: '62.01Z',
+          siretLocal: '00000001000010',
+          latitude: 43.7102,
+          longitude: 7.262,
+        },
+        {
+          siren: '000000011',
+          name: 'Alpha',
+          legalName: 'ALPHA',
+          nafCode: '62.01Z',
+          siretLocal: '00000001100010',
+          latitude: 43.5808,
+          longitude: 7.1239,
+        },
+      ])
+      .run();
+    expect(findCompanyForOffer(db, { employerName: 'ALPHA', latitude: null, longitude: null })).toBeNull();
+  });
+  it('does not fuzzy-match names whose numeric tokens differ', () => {
+    const db = setup();
+    db.insert(companies)
+      .values([
+        {
+          siren: '000000005',
+          name: 'Agence Web de Nice 2',
+          legalName: 'AGENCE WEB DE NICE 2',
+          nafCode: '62.01Z',
+          siretLocal: '00000000500010',
+          latitude: 43.7102,
+          longitude: 7.262,
+        },
+      ])
+      .run();
+    expect(
+      findCompanyForOffer(db, { employerName: 'AGENCE WEB DE NICE', latitude: 43.71, longitude: 7.26 }),
+    ).toBeNull();
+  });
+  it('sees companies inserted after the first lookup', () => {
+    const db = setup();
+    findCompanyForOffer(db, { employerName: 'Cliken Web', latitude: 43.62, longitude: 7.04 });
+    db.insert(companies)
+      .values([
+        {
+          siren: '000000006',
+          name: 'Zeta Corp',
+          legalName: 'ZETA CORP',
+          nafCode: '62.01Z',
+          siretLocal: '00000000600010',
+          latitude: 43.7,
+          longitude: 7.25,
+        },
+      ])
+      .run();
+    expect(findCompanyForOffer(db, { employerName: 'ZETA CORP', latitude: 43.7, longitude: 7.25 })).toBe(
+      '000000006',
+    );
+  });
 });
 
 describe('matchOffres', () => {
