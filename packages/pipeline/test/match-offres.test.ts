@@ -53,6 +53,18 @@ describe('findCompanyForOffer', () => {
       '000000001',
     );
   });
+  it('accepts an exact name up to 60 km away (offer in Nice, company in Valbonne)', () => {
+    const db = setup();
+    expect(
+      findCompanyForOffer(db, { employerName: 'Cliken Web', latitude: 43.6772, longitude: 7.2166 }),
+    ).toBe('000000001');
+  });
+  it('rejects a fuzzy name beyond 15 km even inside the département', () => {
+    const db = setup();
+    expect(
+      findCompanyForOffer(db, { employerName: 'CLIKEN WEB PROS', latitude: 43.6772, longitude: 7.2166 }),
+    ).toBeNull();
+  });
   it('rejects a name match that is too far away', () => {
     const db = setup();
     expect(

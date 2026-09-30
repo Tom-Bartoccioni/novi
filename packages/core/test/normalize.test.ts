@@ -10,6 +10,7 @@ describe('normalizeCompanyName', () => {
     expect(normalizeCompanyName('Cliken Web SAS')).toBe('cliken web');
     expect(normalizeCompanyName('S.A.R.L. Dupont')).toBe('dupont');
     expect(normalizeCompanyName('WeTech SASU')).toBe('wetech');
+    expect(normalizeCompanyName('CLEEVEN SE')).toBe('cleeven');
   });
   it('collapses whitespace', () => {
     expect(normalizeCompanyName('  Tech   Nice  ')).toBe('tech nice');

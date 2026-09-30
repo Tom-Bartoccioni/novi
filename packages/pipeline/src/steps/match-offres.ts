@@ -4,7 +4,13 @@ import { and, eq, isNull, sql } from 'drizzle-orm';
 import { type RunResult, withRun } from '../lib/run';
 import { OFFER_TECH_CONFIDENCE, offerText } from './ingest-offres';
 
+/** Rayon toléré pour un nom approchant : le lieu de travail doit être proche de l'établissement. */
 export const MAX_MATCH_DISTANCE_KM = 15;
+/**
+ * Rayon toléré pour un nom exact : une entreprise de Valbonne publie couramment une offre située à Nice
+ * (15,4 km), on couvre donc tout le département tout en excluant un homonyme d'une autre région.
+ */
+export const MAX_EXACT_MATCH_DISTANCE_KM = 60;
 export const FUZZY_THRESHOLD = 0.9;
 
 type Candidate = { siren: string; names: string[]; latitude: number; longitude: number };
@@ -83,7 +89,7 @@ export function findCompanyForOffer(db: Db, offer: OfferLike): string | null {
     if (!exact && similarity < FUZZY_THRESHOLD) continue;
     if (!exact && numericTokens(bestName).sort().join(',') !== wantedNumbers) continue;
     const distance = point ? distanceKm(point, c) : 0;
-    if (point && distance > MAX_MATCH_DISTANCE_KM) continue;
+    if (point && distance > (exact ? MAX_EXACT_MATCH_DISTANCE_KM : MAX_MATCH_DISTANCE_KM)) continue;
     if (!point && !exact) continue;
     scored.push({ siren: c.siren, exact, similarity, distance });
   }
