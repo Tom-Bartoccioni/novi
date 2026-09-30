@@ -54,8 +54,22 @@ export function ProfileForm({ initial, tags }: { initial: Initial; tags: Tag[] }
   const toggle = (list: string[], set: (v: string[]) => void, value: string) =>
     set(list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
 
-  /** L'adresse saisie n'a pas été localisée : on refuse d'enregistrer des coordonnées qui ne lui correspondent pas. */
+  /** L'adresse saisie n'a pas encore été localisée : l'enregistrement la géocode d'abord. */
   const addressDirty = address.trim() !== home.label;
+
+  /** Géocode l'adresse saisie ; retourne le point retenu ou null si introuvable (l'ancien point est conservé). */
+  const locate = async () => {
+    const r = await geocodeAddress(address);
+    if (!r.ok) {
+      setMessage({ kind: 'error', text: `${r.error}. L'adresse précédente est conservée.` });
+      return null;
+    }
+    const next = { label: r.label, latitude: r.latitude, longitude: r.longitude };
+    setHome(next);
+    setAddress(r.label);
+    setMessage({ kind: 'ok', text: `Localisé : ${r.label}` });
+    return next;
+  };
 
   return (
     <form
@@ -63,10 +77,12 @@ export function ProfileForm({ initial, tags }: { initial: Initial; tags: Tag[] }
       onSubmit={(e) => {
         e.preventDefault();
         start(async () => {
+          const point = addressDirty ? await locate() : home;
+          if (!point) return;
           const r = await updateProfile({
-            homeLabel: home.label,
-            homeLatitude: home.latitude,
-            homeLongitude: home.longitude,
+            homeLabel: point.label,
+            homeLatitude: point.latitude,
+            homeLongitude: point.longitude,
             radiusKm: radius,
             skills,
             headcountRanges: ranges,
@@ -91,11 +107,7 @@ export function ProfileForm({ initial, tags }: { initial: Initial; tags: Tag[] }
             disabled={pending}
             onClick={() =>
               start(async () => {
-                const r = await geocodeAddress(address);
-                if (r.ok) {
-                  setHome({ label: r.label, latitude: r.latitude, longitude: r.longitude });
-                  setMessage({ kind: 'ok', text: `Localisé : ${r.label}` });
-                } else setMessage({ kind: 'error', text: `${r.error}. L'adresse précédente est conservée.` });
+                await locate();
               })
             }
           >
@@ -105,7 +117,11 @@ export function ProfileForm({ initial, tags }: { initial: Initial; tags: Tag[] }
         <p className="text-sm text-muted-foreground">
           Actuel : {home.label} ({home.latitude.toFixed(4)}, {home.longitude.toFixed(4)})
         </p>
-        {addressDirty && <p className="text-sm text-destructive">Adresse modifiée : cliquez sur Localiser</p>}
+        {addressDirty && (
+          <p className="text-sm text-muted-foreground">
+            Adresse modifiée : elle sera localisée à l'enregistrement, ou tout de suite avec Localiser.
+          </p>
+        )}
         <label htmlFor="radius-km" className="flex items-center gap-2 text-sm">
           Rayon
           <Input
@@ -167,7 +183,7 @@ export function ProfileForm({ initial, tags }: { initial: Initial; tags: Tag[] }
       </section>
 
       <div className="flex items-center gap-3">
-        <Button type="submit" disabled={pending || addressDirty}>
+        <Button type="submit" disabled={pending}>
           Enregistrer le profil
         </Button>
         {message && (
