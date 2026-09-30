@@ -16,6 +16,7 @@ cp .env.example .env      # puis renseigner les identifiants
 pnpm install
 pnpm db:migrate           # crée data/novi.db, charge le dictionnaire des technos et le profil par défaut
 pnpm pipeline run all --departement 06
+pnpm dev                  # puis http://localhost:3000
 ```
 
 ## Commandes du pipeline
@@ -58,4 +59,9 @@ pnpm db:generate  # après modification de packages/db/src/schema.ts
 - `packages/core` : fonctions pures (normalisation, détection de technos, scoring) et configuration JSON.
 - `packages/db` : schéma Drizzle, client SQLite, migrations. Le calcul de rayon est isolé dans `src/geo.ts` en vue de PostGIS.
 - `packages/pipeline` : ligne de commande d'ingestion.
-- `apps/web` : application Next.js (Plan 2).
+- `apps/web` : application Next.js. `pnpm dev` puis http://localhost:3000.
+  - `/` exploration : liste et carte, filtres dans l'URL.
+  - `/entreprises/<siren>` fiche : identité, présence en ligne (avec « Analyser le site »), stack sourcée, offres, signaux, score expliqué, statut et notes.
+  - `/employeurs-inconnus` : offres non rattachées, rattachement manuel mémorisé.
+  - `/profil` : adresse géocodée, rayon, tailles, compétences.
+  - `/pipeline` : compteurs et derniers runs.
