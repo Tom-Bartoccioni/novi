@@ -69,7 +69,8 @@ export async function analyzeWebsite(siren: string): Promise<ActionResult> {
       }),
     ]);
     if (result === TIMED_OUT) {
-      // Le crawl continue : on rafraîchit la page quand il aboutit, sans faire échouer quoi que ce soit.
+      // Le crawl continue et persiste lui-même ses résultats quand il aboutit ; l'utilisateur recharge la page
+      // pour les voir. Le revalidatePath tardif n'est qu'un coup de pouce, son échec éventuel est ignoré.
       crawl.then(refresh).catch(() => {});
       return {
         ok: false,

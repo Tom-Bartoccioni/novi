@@ -32,6 +32,16 @@ describe('status and notes', () => {
     const db = seededDb();
     expect(() => applyStatus(db, getDefaultProfile(db).id, '000000001', 'bogus')).toThrow(/statut/i);
   });
+  it('rejects a status for an unknown company', () => {
+    const db = seededDb();
+    expect(() => applyStatus(db, getDefaultProfile(db).id, '999', 'interested')).toThrow(
+      'Entreprise inconnue : 999',
+    );
+  });
+  it('rejects notes for an unknown company', () => {
+    const db = seededDb();
+    expect(() => applyNotes(db, getDefaultProfile(db).id, '999', 'x')).toThrow('Entreprise inconnue : 999');
+  });
 });
 
 describe('website', () => {
@@ -85,6 +95,10 @@ describe('link employer', () => {
       .sort();
     expect(offerTechs).toEqual(['php', 'symfony']);
   });
+  it('rejects a blank employer name', () => {
+    const db = seededDb();
+    expect(() => applyLinkEmployer(db, '   ', '000000002')).toThrow("Nom d'employeur vide");
+  });
 });
 
 describe('profile', () => {
@@ -119,5 +133,23 @@ describe('profile', () => {
         headcountRanges: [],
       }),
     ).toThrow(/rayon/i);
+  });
+  it('rejects out-of-range coordinates and drops unknown headcount ranges', () => {
+    const db = seededDb();
+    const profile = getDefaultProfile(db);
+    const base = { homeLabel: 'x', radiusKm: 10, skills: [], headcountRanges: [] };
+    expect(() => applyProfile(db, profile.id, { ...base, homeLatitude: 91, homeLongitude: 0 })).toThrow(
+      /latitude/i,
+    );
+    expect(() =>
+      applyProfile(db, profile.id, { ...base, homeLatitude: 0, homeLongitude: Number.NaN }),
+    ).toThrow(/longitude/i);
+    applyProfile(db, profile.id, {
+      ...base,
+      homeLatitude: 43.7,
+      homeLongitude: 7.26,
+      headcountRanges: ['12', 'ZZ', '21'],
+    });
+    expect(getDefaultProfile(db).headcountRanges).toEqual(['12', '21']);
   });
 });
