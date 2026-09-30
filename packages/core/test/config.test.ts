@@ -9,12 +9,12 @@ import {
 } from '../src/config';
 
 describe('config loaders', () => {
-  it('ingest config has NAF codes, headcount ranges and ROME codes', () => {
+  it('ingest config has NAF codes, headcount ranges and ROME domains', () => {
     const cfg = loadIngestConfig();
     expect(cfg.nafCodes).toContain('62.01Z');
     expect(cfg.nafLabels['62.01Z']).toBe('Programmation informatique');
     expect(cfg.headcountRanges).toEqual(['03', '11', '12', '21', '22']);
-    expect(cfg.romeCodes).toContain('M1805');
+    expect(cfg.romeDomaines).toContain('M18');
   });
   it('tech tags are unique by slug and every alias is lowercase', () => {
     const tags = loadTechTags();

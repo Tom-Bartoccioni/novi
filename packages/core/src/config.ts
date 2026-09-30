@@ -9,8 +9,8 @@ const ingestSchema = z.object({
   nafCodes: z.array(z.string().regex(/^\d{2}\.\d{2}[A-Z]$/)).min(1),
   nafLabels: z.record(z.string(), z.string()),
   headcountRanges: z.array(z.string().length(2)).min(1),
-  romeCodes: z.array(z.string().regex(/^[A-Z]\d{4}$/)).min(1),
-  romeLabels: z.record(z.string(), z.string()),
+  romeDomaines: z.array(z.string().regex(/^[A-Z]\d{2}$/)).min(1),
+  romeDomaineLabels: z.record(z.string(), z.string()),
 });
 
 export type IngestConfig = z.infer<typeof ingestSchema>;
