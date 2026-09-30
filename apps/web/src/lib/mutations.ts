@@ -3,6 +3,7 @@ import {
   COMPANY_STATUSES,
   type CompanyStatus,
   companies,
+  companyExists,
   companyStatus,
   type Db,
   jobOffers,
@@ -44,16 +45,22 @@ export function normalizeUrl(input: string): string {
     throw new Error('URL invalide');
   }
   if (!/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(url.hostname)) throw new Error('URL invalide');
+  url.username = '';
+  url.password = '';
+  url.hash = '';
   return url.toString().replace(/\/$/, '');
 }
 
-export function applyWebsite(database: Db, siren: string, website: string): void {
+/** Enregistre le site saisi à la main et renvoie l'URL normalisée. */
+export function applyWebsite(database: Db, siren: string, website: string): string {
   const url = normalizeUrl(website);
+  if (!companyExists(database, siren)) throw new Error(`Entreprise inconnue : ${siren}`);
   database
     .update(companies)
     .set({ website: url, websiteSource: 'manuel', websiteConfidence: 1 })
     .where(eq(companies.siren, siren))
     .run();
+  return url;
 }
 
 export function applyLinkEmployer(database: Db, employerName: string, siren: string): { linked: number } {

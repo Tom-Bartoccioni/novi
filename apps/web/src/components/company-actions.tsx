@@ -16,21 +16,30 @@ const LABELS: Record<string, string> = {
 };
 const COMPANY_STATUSES = Object.keys(LABELS);
 
+/** Contrôlé ; la page le monte avec `key={status}` pour resynchroniser la valeur après un rafraîchissement serveur. */
 export function StatusSelect({ siren, status }: { siren: string; status: string }) {
+  const [value, setValue] = useState(status);
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   return (
     <div className="flex items-center gap-2">
       <select
         className="h-9 rounded-md border bg-background px-2 text-sm"
-        defaultValue={status}
+        value={value}
         disabled={pending}
-        onChange={(e) =>
+        onChange={(e) => {
+          const next = e.target.value;
+          const previous = value;
+          setValue(next);
           start(async () => {
-            const r = await updateStatus(siren, e.target.value);
-            setError(r.ok ? null : r.error);
-          })
-        }
+            const r = await updateStatus(siren, next);
+            if (r.ok) setError(null);
+            else {
+              setValue(previous);
+              setError(r.error);
+            }
+          });
+        }}
       >
         {COMPANY_STATUSES.map((s) => (
           <option key={s} value={s}>
@@ -85,9 +94,12 @@ export function WebsiteField({
   website: string | null;
   canAnalyze: boolean;
 }) {
+  const [saved, setSaved] = useState(canAnalyze && website ? website : '');
   const [value, setValue] = useState(website ?? '');
   const [pending, start] = useTransition();
   const [message, setMessage] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
+  // On n'analyse que le site enregistré : une saisie non sauvegardée désactive le bouton.
+  const canRun = saved !== '' && value.trim() === saved;
   return (
     <div className="space-y-2">
       <form
@@ -96,7 +108,14 @@ export function WebsiteField({
           e.preventDefault();
           start(async () => {
             const r = await updateWebsite(siren, value);
-            setMessage(r.ok ? { kind: 'ok', text: 'Site enregistré' } : { kind: 'error', text: r.error });
+            if (r.ok) {
+              const url = r.website ?? value.trim();
+              setValue(url);
+              setSaved(url);
+              setMessage({ kind: 'ok', text: r.message ?? 'Site enregistré' });
+            } else {
+              setMessage({ kind: 'error', text: r.error });
+            }
           });
         }}
       >
@@ -111,7 +130,7 @@ export function WebsiteField({
         </Button>
         <Button
           type="button"
-          disabled={pending || !canAnalyze}
+          disabled={pending || !canRun}
           onClick={() =>
             start(async () => {
               setMessage({ kind: 'ok', text: 'Analyse en cours (jusqu’à 60 s)…' });

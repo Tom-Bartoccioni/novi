@@ -12,6 +12,7 @@ import { formatDate, formatDistance, formatEuros, headcountLabel } from '@/lib/f
 
 export const dynamic = 'force-dynamic';
 
+const NAF_LABELS = loadIngestConfig().nafLabels;
 const CATEGORY_LABELS: Record<string, string> = {
   language: 'Langages',
   framework: 'Frameworks',
@@ -60,7 +61,7 @@ export default async function CompanyPage({ params }: { params: Promise<{ siren:
   const detail = getCompanyDetail(db(), profile, siren);
   if (!detail) notFound();
   const { company, distanceKm, techGroups, activeOffers, signals, score, status, notes, links } = detail;
-  const nafLabel = company.nafLabel ?? loadIngestConfig().nafLabels[company.nafCode] ?? company.nafCode;
+  const nafLabel = company.nafLabel ?? NAF_LABELS[company.nafCode] ?? company.nafCode;
   const financeYears = Object.entries(company.finances ?? {}).sort(([a], [b]) => a.localeCompare(b));
 
   return (
@@ -255,7 +256,7 @@ export default async function CompanyPage({ params }: { params: Promise<{ siren:
           </Section>
           <Section title="Actions">
             <div className="space-y-3">
-              <StatusSelect siren={company.siren} status={status} />
+              <StatusSelect key={status} siren={company.siren} status={status} />
               <NotesField siren={company.siren} notes={notes} />
             </div>
           </Section>
