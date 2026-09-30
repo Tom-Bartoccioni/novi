@@ -138,7 +138,7 @@ export async function getAccessToken(): Promise<string> {
 
 const limiter = createLimiter(8);
 
-export type SearchParams = { departement: string; romeCode: string; window: DateWindow; first: number };
+export type SearchParams = { departement: string; domaine: string; window: DateWindow; first: number };
 
 export async function searchOffers(
   params: SearchParams,
@@ -146,7 +146,7 @@ export async function searchOffers(
   const token = await getAccessToken();
   const url = new URL(SEARCH_URL);
   url.searchParams.set('departement', params.departement);
-  url.searchParams.set('codeROME', params.romeCode);
+  url.searchParams.set('domaine', params.domaine);
   url.searchParams.set('minCreationDate', params.window.min);
   url.searchParams.set('maxCreationDate', params.window.max);
   const last = Math.min(params.first + PAGE_SIZE - 1, MAX_INDEX);
@@ -164,22 +164,26 @@ export async function searchOffers(
   return { offers: data.resultats, range: parseContentRange(response.headers.get('content-range')) };
 }
 
-/** Itère toutes les offres d'un département pour des codes ROME, sur 12 fenêtres mensuelles. */
+/**
+ * Itère toutes les offres d'un département pour des domaines ROME (ex. « M18 »), sur 12 fenêtres mensuelles.
+ * On filtre par domaine et non par code : ROME 4.0 a éclaté l'ancien M1805 en une trentaine de codes
+ * (M1855 web, M1861 logiciel, M1827 DevOps, M1811 data…), une liste de codes rate l'essentiel des offres.
+ */
 export async function* iterateOffers(
   departement: string,
-  romeCodes: string[],
+  domaines: string[],
   now = new Date(),
 ): AsyncGenerator<Offer> {
-  for (const romeCode of romeCodes) {
+  for (const domaine of domaines) {
     for (const window of monthlyWindows(now, 12)) {
       let first = 0;
       for (;;) {
-        const { offers, range } = await searchOffers({ departement, romeCode, window, first });
+        const { offers, range } = await searchOffers({ departement, domaine, window, first });
         for (const o of offers) yield o;
         if (offers.length < PAGE_SIZE || !range) break;
         if (range.total > MAX_INDEX + 1 && first === 0) {
           warn(
-            `France Travail ${romeCode} ${window.min}→${window.max} : ${range.total} offres, seules les ${MAX_INDEX + 1} premières seront lues`,
+            `France Travail ${domaine} ${window.min}→${window.max} : ${range.total} offres, seules les ${MAX_INDEX + 1} premières seront lues`,
           );
         }
         first = range.last + 1;

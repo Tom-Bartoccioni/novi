@@ -156,7 +156,7 @@ Clé primaire (`profile_id`, `siren`). `status` parmi `to_review`, `interested`,
 
 Commande : `pnpm pipeline <étape> [options]`. Options communes : `--limit N`, `--force` (retraite ce qui a déjà été traité, sinon seulement le manquant), `--siren X` (une seule entreprise). Chaque run écrit une ligne dans `crawl_runs`. Une erreur sur une entreprise est journalisée et le run continue. Chaque source a son propre limiteur de débit.
 
-La configuration vit dans `packages/core/config/` : `ingest.json` (codes NAF, tranches d'effectif, codes ROME), `tech-tags.json`, `esn-keywords.json`, `crawl-paths.json`. Validée par Zod au chargement.
+La configuration vit dans `packages/core/config/` : `ingest.json` (codes NAF, tranches d'effectif, domaines ROME), `tech-tags.json`, `esn-keywords.json`, `crawl-paths.json`. Validée par Zod au chargement.
 
 ### 4.1 `ingest sirene --departement 06`
 
@@ -174,7 +174,7 @@ Upsert par SIREN. Une entreprise disparue de l'API n'est pas supprimée.
 
 Source : API « Offres d'emploi » de France Travail (v2 dans l'URL, affichée sans suffixe de version sur le portail). OAuth2 client credentials, scopes `o2dsoffre` et `api_offresdemploiv2`, identifiants dans `.env`. Endpoints : jeton sur `https://entreprise.francetravail.fr/connexion/oauth2/access_token?realm=/partenaire`, recherche sur `https://api.francetravail.io/partenaire/offresdemploi/v2/offres/search`. Limite 10 requêtes par seconde, 150 offres par page (`range=0-149`), index de fin maximal 3149 (fiche OpenAPI 2.01, sept. 2026 ; c'était 1149 auparavant), soit 3150 offres par requête.
 
-Codes ROME par défaut : M1805, M1810, M1802, M1806, M1803. Pour chaque code : pagination par `range`, découpage systématique en fenêtres mensuelles sur les 12 derniers mois (`minCreationDate`, `maxCreationDate`) pour rester sous les 3150 ; une fenêtre qui dépasse malgré tout est journalisée en avertissement.
+Filtre par domaine ROME (`domaine=M18`, « Systèmes d'information et de télécommunication ») et non par code : ROME 4.0 a éclaté l'ancien M1805 en une trentaine de codes (M1855 développeur web, M1861 développeur logiciel, M1827 DevOps, M1811 data engineer…) et une liste de codes ne remontait que 18 offres sur 158 dans le 06. Pour chaque domaine : pagination par `range`, découpage systématique en fenêtres mensuelles sur les 12 derniers mois (`minCreationDate`, `maxCreationDate`) pour rester sous les 3150 ; une fenêtre qui dépasse malgré tout est journalisée en avertissement.
 
 Upsert par identifiant, avec mise à jour de `last_seen_run_id`. À la fin du run, une offre non vue depuis trois runs passe `is_active` à faux. Détection des technos dans le titre et la description via le dictionnaire, écrite dans `company_tech` avec `source=offre` pour les offres déjà rattachées ; la commande `match offres` fait de même pour celles qu'elle rattache.
 

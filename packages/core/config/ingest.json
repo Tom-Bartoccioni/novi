@@ -30,12 +30,8 @@
     "71.12B": "Ingénierie, études techniques"
   },
   "headcountRanges": ["03", "11", "12", "21", "22"],
-  "romeCodes": ["M1805", "M1810", "M1802", "M1806", "M1803"],
-  "romeLabels": {
-    "M1805": "Études et développement informatique",
-    "M1810": "Production et exploitation de systèmes d'information",
-    "M1802": "Expertise et support en systèmes d'information",
-    "M1806": "Conseil et maîtrise d'ouvrage en systèmes d'information",
-    "M1803": "Direction des systèmes d'information"
+  "romeDomaines": ["M18"],
+  "romeDomaineLabels": {
+    "M18": "Systèmes d'information et de télécommunication"
   }
 }

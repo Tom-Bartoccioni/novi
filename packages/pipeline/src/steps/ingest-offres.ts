@@ -21,7 +21,7 @@ export function offerText(offer: { title: string; description?: string | null })
 export function ingestOffres(db: Db, opts: IngestOffresOptions): Promise<RunResult> {
   const config = loadIngestConfig();
   const tags = loadTechTags();
-  const iterate = opts.iterate ?? (() => iterateOffers(opts.departement, config.romeCodes));
+  const iterate = opts.iterate ?? (() => iterateOffers(opts.departement, config.romeDomaines));
   return withRun(
     db,
     'ingest offres',
