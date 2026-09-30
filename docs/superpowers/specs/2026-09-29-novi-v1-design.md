@@ -172,9 +172,9 @@ Upsert par SIREN. Une entreprise disparue de l'API n'est pas supprimée.
 
 ### 4.2 `ingest offres --departement 06`
 
-Source : API Offres d'emploi v2 de France Travail. OAuth2 client credentials, scopes `o2dsoffre` et `api_offresdemploiv2`, identifiants dans `.env`. Endpoints : jeton sur `https://entreprise.francetravail.fr/connexion/oauth2/access_token?realm=/partenaire`, recherche sur `https://api.francetravail.io/partenaire/offresdemploi/v2/offres/search`. Limite 10 requêtes par seconde, 150 offres par page (`range=0-149`), index de fin maximal 1149, soit 1150 offres par requête.
+Source : API « Offres d'emploi » de France Travail (v2 dans l'URL, affichée sans suffixe de version sur le portail). OAuth2 client credentials, scopes `o2dsoffre` et `api_offresdemploiv2`, identifiants dans `.env`. Endpoints : jeton sur `https://entreprise.francetravail.fr/connexion/oauth2/access_token?realm=/partenaire`, recherche sur `https://api.francetravail.io/partenaire/offresdemploi/v2/offres/search`. Limite 10 requêtes par seconde, 150 offres par page (`range=0-149`), index de fin maximal 3149 (fiche OpenAPI 2.01, sept. 2026 ; c'était 1149 auparavant), soit 3150 offres par requête.
 
-Codes ROME par défaut : M1805, M1810, M1802, M1806, M1803. Pour chaque code : pagination par `range`, découpage systématique en fenêtres mensuelles sur les 12 derniers mois (`minCreationDate`, `maxCreationDate`) pour rester sous les 1150 ; une fenêtre qui dépasse malgré tout est journalisée en avertissement.
+Codes ROME par défaut : M1805, M1810, M1802, M1806, M1803. Pour chaque code : pagination par `range`, découpage systématique en fenêtres mensuelles sur les 12 derniers mois (`minCreationDate`, `maxCreationDate`) pour rester sous les 3150 ; une fenêtre qui dépasse malgré tout est journalisée en avertissement.
 
 Upsert par identifiant, avec mise à jour de `last_seen_run_id`. À la fin du run, une offre non vue depuis trois runs passe `is_active` à faux. Détection des technos dans le titre et la description via le dictionnaire, écrite dans `company_tech` avec `source=offre` pour les offres déjà rattachées ; la commande `match offres` fait de même pour celles qu'elle rattache.
 

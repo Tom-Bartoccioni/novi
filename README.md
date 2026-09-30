@@ -5,7 +5,7 @@ Découverte de startups et PME tech autour de chez soi. Le concept est dans `Con
 ## Prérequis
 
 - Node 22 ou plus récent, pnpm 9.
-- Un compte développeur gratuit sur https://francetravail.io avec l'API « Offres d'emploi v2 » activée (facultatif : sans lui, les étapes offres sont ignorées).
+- Un compte développeur gratuit sur https://francetravail.io avec l'API « Offres d'emploi » activée (l'ancienne « Offres d'emploi v2 », renommée sur le portail) (facultatif : sans lui, les étapes offres sont ignorées).
 - Un token GitHub personnel sans permission particulière (facultatif : passe de 60 à 5000 requêtes par heure).
 - Aucun compilateur C++ : `better-sqlite3` est listé dans `pnpm.neverBuiltDependencies` du `package.json` racine pour que pnpm utilise ses binaires précompilés au lieu de tenter une compilation qui échouerait sans Visual Studio.
 
