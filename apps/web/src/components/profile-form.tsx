@@ -16,7 +16,8 @@ type Initial = {
   headcountRanges: string[];
 };
 
-const HEADCOUNT_CODES = ['01', '02', '03', '11', '12', '21', '22', '31', '32', '41'];
+/** Tranches proposées : toutes celles du référentiel, sauf « non renseigné » et « 0 salarié ». */
+const HEADCOUNT_CODES = Object.keys(HEADCOUNT_LABELS).filter((code) => code !== 'NN' && code !== '00');
 const CATEGORY_LABELS: Record<string, string> = {
   language: 'Langages',
   framework: 'Frameworks',

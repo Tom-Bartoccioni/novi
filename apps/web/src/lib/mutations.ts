@@ -1,4 +1,4 @@
-import { detectTechs, loadTechTags } from '@novi/core';
+import { detectTechs, HEADCOUNT_LABELS, loadTechTags } from '@novi/core';
 import {
   COMPANY_STATUSES,
   type CompanyStatus,
@@ -17,6 +17,7 @@ import { and, eq, isNull } from 'drizzle-orm';
 export function applyStatus(database: Db, profileId: number, siren: string, status: string): void {
   if (!(COMPANY_STATUSES as readonly string[]).includes(status))
     throw new Error(`Statut inconnu : ${status}`);
+  if (!companyExists(database, siren)) throw new Error(`Entreprise inconnue : ${siren}`);
   database
     .insert(companyStatus)
     .values({ profileId, siren, status: status as CompanyStatus })
@@ -28,6 +29,7 @@ export function applyStatus(database: Db, profileId: number, siren: string, stat
 }
 
 export function applyNotes(database: Db, profileId: number, siren: string, notes: string): void {
+  if (!companyExists(database, siren)) throw new Error(`Entreprise inconnue : ${siren}`);
   database
     .insert(companyStatus)
     .values({ profileId, siren, notes })
@@ -64,6 +66,7 @@ export function applyWebsite(database: Db, siren: string, website: string): stri
 }
 
 export function applyLinkEmployer(database: Db, employerName: string, siren: string): { linked: number } {
+  if (!employerName.trim()) throw new Error("Nom d'employeur vide");
   const tags = loadTechTags();
   const offers = database
     .select()
@@ -98,7 +101,12 @@ export function applyProfile(database: Db, profileId: number, input: ProfileInpu
   if (!(input.radiusKm >= 1 && input.radiusKm <= 200))
     throw new Error('Le rayon doit être entre 1 et 200 km');
   if (!input.homeLabel.trim()) throw new Error('Adresse manquante');
+  if (!(Number.isFinite(input.homeLatitude) && Math.abs(input.homeLatitude) <= 90))
+    throw new Error('Latitude invalide');
+  if (!(Number.isFinite(input.homeLongitude) && Math.abs(input.homeLongitude) <= 180))
+    throw new Error('Longitude invalide');
   const known = new Set(loadTechTags().map((t) => t.slug));
+  const knownRanges = new Set(Object.keys(HEADCOUNT_LABELS));
   database
     .update(profiles)
     .set({
@@ -107,7 +115,7 @@ export function applyProfile(database: Db, profileId: number, input: ProfileInpu
       homeLongitude: input.homeLongitude,
       radiusKm: input.radiusKm,
       skills: input.skills.filter((s) => known.has(s)),
-      headcountRanges: input.headcountRanges,
+      headcountRanges: input.headcountRanges.filter((r) => knownRanges.has(r)),
     })
     .where(eq(profiles.id, profileId))
     .run();
