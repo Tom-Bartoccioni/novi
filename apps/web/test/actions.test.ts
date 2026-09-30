@@ -1,7 +1,21 @@
-import { companies, companyStatus, employerAliases, getDefaultProfile, jobOffers } from '@novi/db';
-import { eq } from 'drizzle-orm';
+import {
+  companies,
+  companyStatus,
+  companyTech,
+  employerAliases,
+  getDefaultProfile,
+  jobOffers,
+} from '@novi/db';
+import { and, eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
-import { applyLinkEmployer, applyNotes, applyProfile, applyStatus, applyWebsite } from '@/lib/mutations';
+import {
+  applyLinkEmployer,
+  applyNotes,
+  applyProfile,
+  applyStatus,
+  applyWebsite,
+  normalizeUrl,
+} from '@/lib/mutations';
 import { seededDb } from './helpers';
 
 describe('status and notes', () => {
@@ -21,9 +35,9 @@ describe('status and notes', () => {
 });
 
 describe('website', () => {
-  it('stores a normalized manual website', () => {
+  it('stores a normalized manual website and returns it', () => {
     const db = seededDb();
-    applyWebsite(db, '000000002', 'nicetech.fr');
+    expect(applyWebsite(db, '000000002', 'nicetech.fr')).toBe('https://nicetech.fr');
     expect(db.select().from(companies).where(eq(companies.siren, '000000002')).get()).toMatchObject({
       website: 'https://nicetech.fr',
       websiteSource: 'manuel',
@@ -33,6 +47,15 @@ describe('website', () => {
   it('rejects garbage', () => {
     const db = seededDb();
     expect(() => applyWebsite(db, '000000002', 'pas une url')).toThrow(/URL/);
+  });
+  it('rejects an unknown company', () => {
+    const db = seededDb();
+    expect(() => applyWebsite(db, '999', 'x.fr')).toThrow('Entreprise inconnue : 999');
+  });
+  it('strips credentials and hash but keeps the query', () => {
+    expect(normalizeUrl('https://user:pw@exemple.fr/jobs?lang=fr#top')).toBe(
+      'https://exemple.fr/jobs?lang=fr',
+    );
   });
 });
 
@@ -51,6 +74,16 @@ describe('link employer', () => {
         .sort(),
     ).toEqual(['B', 'C']);
     expect(db.select().from(employerAliases).get()?.employerNameNormalized).toBe('inconnu');
+    // Offre B (« Dev PHP / Symfony ») donne php et symfony ; offre C (« Dev Go / Go ») ne donne rien,
+    // le tag go exigeant un contexte pour éviter les faux positifs.
+    const offerTechs = db
+      .select({ slug: companyTech.tagSlug })
+      .from(companyTech)
+      .where(and(eq(companyTech.siren, '000000002'), eq(companyTech.source, 'offre')))
+      .all()
+      .map((r) => r.slug)
+      .sort();
+    expect(offerTechs).toEqual(['php', 'symfony']);
   });
 });
 

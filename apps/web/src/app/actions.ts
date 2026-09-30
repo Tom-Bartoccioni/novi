@@ -12,7 +12,7 @@ import {
   type ProfileInput,
 } from '@/lib/mutations';
 
-export type ActionResult = { ok: true; message?: string } | { ok: false; error: string };
+export type ActionResult = { ok: true; message?: string; website?: string } | { ok: false; error: string };
 
 function fail(err: unknown): ActionResult {
   return { ok: false, error: err instanceof Error ? err.message : String(err) };
@@ -41,34 +41,50 @@ export async function updateNotes(siren: string, notes: string): Promise<ActionR
 
 export async function updateWebsite(siren: string, website: string): Promise<ActionResult> {
   try {
-    applyWebsite(db(), siren, website);
+    const url = applyWebsite(db(), siren, website);
     revalidatePath(`/entreprises/${siren}`);
-    return { ok: true };
+    return { ok: true, message: 'Site enregistré', website: url };
   } catch (err) {
     return fail(err);
   }
 }
 
-/** Délai global de l'action ; le crawl lui-même s'arrête un peu avant (CRAWL_DEADLINE_MS) pour finir proprement. */
+/** Délai global de l'action ; le crawl lui-même cesse d'ouvrir des pages bien avant (CRAWL_DEADLINE_MS) pour finir proprement. */
 const CRAWL_TIMEOUT_MS = 60_000;
-const CRAWL_DEADLINE_MS = 55_000;
+const CRAWL_DEADLINE_MS = 45_000;
+const TIMED_OUT = Symbol('timeout');
 
 export async function analyzeWebsite(siren: string): Promise<ActionResult> {
-  try {
-    const analysis = await Promise.race([
-      crawlCompany(db(), siren, { deadlineMs: CRAWL_DEADLINE_MS }),
-      new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Délai dépassé (60 s)')), CRAWL_TIMEOUT_MS),
-      ),
-    ]);
+  const refresh = () => {
     revalidatePath(`/entreprises/${siren}`);
     revalidatePath('/');
+  };
+  const crawl = crawlCompany(db(), siren, { deadlineMs: CRAWL_DEADLINE_MS });
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const result = await Promise.race([
+      crawl,
+      new Promise<typeof TIMED_OUT>((resolve) => {
+        timer = setTimeout(() => resolve(TIMED_OUT), CRAWL_TIMEOUT_MS);
+      }),
+    ]);
+    if (result === TIMED_OUT) {
+      // Le crawl continue : on rafraîchit la page quand il aboutit, sans faire échouer quoi que ce soit.
+      crawl.then(refresh).catch(() => {});
+      return {
+        ok: false,
+        error: "Délai dépassé (60 s) : l'analyse continue en arrière-plan, rechargez la page dans une minute",
+      };
+    }
+    refresh();
     return {
       ok: true,
-      message: `${analysis.detections.length} technos détectées${analysis.careersUrl ? ', page carrière trouvée' : ''}`,
+      message: `${result.detections.length} technos détectées${result.careersUrl ? ', page carrière trouvée' : ''}`,
     };
   } catch (err) {
     return fail(err);
+  } finally {
+    clearTimeout(timer);
   }
 }
 
