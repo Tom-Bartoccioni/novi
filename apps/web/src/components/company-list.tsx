@@ -25,6 +25,8 @@ export function CompanyList({
           id={`company-${c.siren}`}
           onMouseEnter={() => onHover(c.siren)}
           onMouseLeave={() => onHover(null)}
+          onFocus={() => onHover(c.siren)}
+          onBlur={() => onHover(null)}
           className={cn('py-3 transition-colors', highlighted === c.siren && 'bg-muted/60')}
         >
           <div className="flex items-start justify-between gap-3">

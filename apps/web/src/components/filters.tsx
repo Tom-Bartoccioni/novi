@@ -2,7 +2,7 @@
 
 import { HEADCOUNT_LABELS } from '@novi/core';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import type { Filters } from '@/lib/data';
 
@@ -14,6 +14,13 @@ const STATUS_OPTIONS = [
   ['rejected', 'Refusée'],
   ['ignored', 'Ignorée'],
 ] as const;
+
+function splitList(value: string | null): string[] {
+  return (value ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
 
 export function FiltersBar({
   filters,
@@ -27,33 +34,58 @@ export function FiltersBar({
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
+  /** Derniers paramètres envoyés au routeur, tant que la navigation n'a pas livré les nouveaux `params`. */
+  const pendingRef = useRef<URLSearchParams | null>(null);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSentQ = useRef(filters.q);
+  const [q, setQ] = useState(filters.q);
+
+  useEffect(() => {
+    if (params) pendingRef.current = null;
+  }, [params]);
+  // Retour arrière ou lien : la recherche vient de l'URL, pas de la saisie en cours.
+  useEffect(() => {
+    if (filters.q !== lastSentQ.current) {
+      lastSentQ.current = filters.q;
+      setQ(filters.q);
+    }
+  }, [filters.q]);
   useEffect(() => () => clearTimeout(searchTimer.current ?? undefined), []);
 
   const update = (patch: Record<string, string | null>) => {
-    const next = new URLSearchParams(params.toString());
+    const next = new URLSearchParams(pendingRef.current ?? params.toString());
     for (const [k, v] of Object.entries(patch)) {
       if (v === null || v === '') next.delete(k);
       else next.set(k, v);
     }
-    router.replace(`${pathname}?${next.toString()}`);
+    pendingRef.current = next;
+    const query = next.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname);
   };
   const toggleIn = (key: 'techs' | 'headcount', value: string) => {
-    const current = filters[key];
+    const current = splitList((pendingRef.current ?? params).get(key));
     const nextList = current.includes(value) ? current.filter((v) => v !== value) : [...current, value];
     update({ [key]: nextList.join(',') });
   };
   const updateSearch = (value: string) => {
+    setQ(value);
     if (searchTimer.current) clearTimeout(searchTimer.current);
-    searchTimer.current = setTimeout(() => update({ q: value }), 300);
+    searchTimer.current = setTimeout(() => {
+      lastSentQ.current = value;
+      update({ q: value });
+    }, 300);
   };
+
+  const selectedFirst = [...techs].sort(
+    (a, b) => Number(filters.techs.includes(b.slug)) - Number(filters.techs.includes(a.slug)),
+  );
 
   return (
     <div className="space-y-3 rounded-lg border p-3 text-sm">
       <div className="flex flex-wrap items-center gap-2">
         <Input
           placeholder="Nom ou ville"
-          defaultValue={filters.q}
+          value={q}
           onChange={(e) => updateSearch(e.target.value)}
           className="h-8 w-48"
         />
@@ -100,7 +132,7 @@ export function FiltersBar({
       </div>
       <div className="flex flex-wrap items-center gap-1">
         <span className="mr-1 text-muted-foreground">Toutes ces technos :</span>
-        {techs.slice(0, 40).map((t) => (
+        {selectedFirst.slice(0, 40).map((t) => (
           <button
             type="button"
             key={t.slug}

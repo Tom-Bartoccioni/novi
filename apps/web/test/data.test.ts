@@ -2,6 +2,7 @@ import { companies, companyStatus, crawlRuns, getDefaultProfile, profiles } from
 import { describe, expect, it } from 'vitest';
 import {
   availableTechs,
+  countCompanies,
   getCompanyDetail,
   listCompanies,
   listUnmatchedOffers,
@@ -130,6 +131,9 @@ describe('listCompanies', () => {
       ['postgresql', 1],
       ['react', 1],
     ]);
+  });
+  it('counts every company in the database, inside or outside the radius', () => {
+    expect(countCompanies(seededDb())).toBe(3);
   });
   it('scores the list exactly like the detail page', () => {
     const db = seededDb();
