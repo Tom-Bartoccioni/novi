@@ -7,6 +7,9 @@ import type { CompanyListItem } from '@/lib/data';
 import { formatDistance, headcountLabel } from '@/lib/format';
 
 const STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty';
+/** Worker copié dans public/ par scripts/copy-maplibre-worker.mjs : Turbopack ne sait pas le résoudre depuis le chunk. */
+const WORKER_URL = '/maplibre/maplibre-gl-worker.mjs';
+maplibregl.setWorkerUrl(WORKER_URL);
 const ON_CLASS = 'novi-marker--on';
 
 export type MapProps = {

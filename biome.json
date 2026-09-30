@@ -8,7 +8,8 @@
       "!**/drizzle/meta",
       "!**/data",
       "!**/next-env.d.ts",
-      "!**/components/ui"
+      "!**/components/ui",
+      "!apps/web/public/maplibre"
     ]
   },
   "css": { "parser": { "tailwindDirectives": true } },

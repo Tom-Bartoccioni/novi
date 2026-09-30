@@ -65,7 +65,7 @@ pnpm db:generate  # après modification de packages/db/src/schema.ts
 - `packages/core` : fonctions pures (normalisation, détection de technos, scoring) et configuration JSON.
 - `packages/db` : schéma Drizzle, client SQLite, migrations. Le calcul de rayon est isolé dans `src/geo.ts` en vue de PostGIS.
 - `packages/pipeline` : ligne de commande d'ingestion.
-- `apps/web` : application Next.js. `pnpm dev` puis http://localhost:3000.
+- `apps/web` : application Next.js. `pnpm dev` puis http://localhost:3000. Le worker de MapLibre est copié dans `public/maplibre/` (ignoré par git) par `scripts/copy-maplibre-worker.mjs` avant `dev` et `build`, parce que Turbopack ne sait pas le résoudre depuis le chunk.
   - `/` exploration : liste et carte, filtres dans l'URL.
   - `/entreprises/<siren>` fiche : identité, présence en ligne (avec « Analyser le site »), stack sourcée, offres, signaux, score expliqué, statut et notes.
   - `/employeurs-inconnus` : offres non rattachées, rattachement manuel mémorisé.
