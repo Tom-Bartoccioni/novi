@@ -8,6 +8,8 @@ export const LEGAL_FORMS = [
   'snc',
   'sci',
   'selarl',
+  'se',
+  'gie',
   'societe par actions simplifiee',
   'societe a responsabilite limitee',
   'entreprise unipersonnelle a responsabilite limitee',

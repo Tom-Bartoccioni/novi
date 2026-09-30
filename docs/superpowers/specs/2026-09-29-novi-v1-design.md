@@ -184,7 +184,7 @@ Pour chaque offre sans SIREN :
 
 1. Consulter `employer_aliases` avec le nom normalisé.
 2. Sinon, normaliser le nom (minuscules, sans accents, sans ponctuation, sans forme juridique SAS, SARL, SA, SASU, EURL, SCOP) et le comparer à `legal_name`, `trade_names` et au nom normalisé des entreprises. Correspondance exacte d'abord, puis similarité par trigrammes avec un seuil de 0,9.
-3. Exiger que le lieu de travail soit à moins de 15 km de l'établissement retenu. Si plusieurs entreprises passent, garder la plus proche.
+3. Exiger que le lieu de travail soit à moins de 15 km de l'établissement retenu pour un nom approchant, et à moins de 60 km pour un nom exact (une entreprise de Valbonne publie couramment une offre située à Nice). Si plusieurs entreprises passent, garder la plus proche.
 
 Une offre rattachée reçoit son SIREN et ses technos sont écrites dans `company_tech`. Une offre non rattachée reste visible dans l'écran « employeurs inconnus ».
 
