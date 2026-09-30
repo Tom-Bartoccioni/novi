@@ -16,14 +16,17 @@ const COUNT_LABELS: Record<string, string> = {
 function duration(run: RunWithStatus): string {
   if (run.status === 'running') return 'en cours';
   if (run.status === 'aborted' || !run.finishedAt) return 'interrompu';
-  const s = Math.round((new Date(run.finishedAt).getTime() - new Date(run.startedAt).getTime()) / 1000);
+  const s = Math.round((Date.parse(run.finishedAt) - Date.parse(run.startedAt)) / 1000);
+  if (!Number.isFinite(s) || s < 0) return '—';
   return s < 60 ? `${s} s` : `${Math.floor(s / 60)} min ${s % 60} s`;
 }
+
+const MAX_ERRORS_SHOWN = 20;
 
 /** Clé stable par erreur : siren et message, suffixés en cas de doublon (la liste n'est jamais réordonnée). */
 function keyedErrors(errors: RunWithStatus['errors']) {
   const seen = new Map<string, number>();
-  return errors.slice(0, 20).map((e) => {
+  return errors.slice(0, MAX_ERRORS_SHOWN).map((e) => {
     const base = `${e.siren ?? ''}:${e.message}`;
     const n = seen.get(base) ?? 0;
     seen.set(base, n + 1);
@@ -87,6 +90,9 @@ export default function PipelinePage() {
                               {e.message}
                             </li>
                           ))}
+                          {r.errors.length > MAX_ERRORS_SHOWN && (
+                            <li>… et {r.errors.length - MAX_ERRORS_SHOWN} autres</li>
+                          )}
                         </ul>
                       </details>
                     )}

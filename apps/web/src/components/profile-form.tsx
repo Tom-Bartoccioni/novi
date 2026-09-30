@@ -53,6 +53,9 @@ export function ProfileForm({ initial, tags }: { initial: Initial; tags: Tag[] }
   const toggle = (list: string[], set: (v: string[]) => void, value: string) =>
     set(list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
 
+  /** L'adresse saisie n'a pas été localisée : on refuse d'enregistrer des coordonnées qui ne lui correspondent pas. */
+  const addressDirty = address.trim() !== home.label;
+
   return (
     <form
       className="space-y-6"
@@ -101,6 +104,7 @@ export function ProfileForm({ initial, tags }: { initial: Initial; tags: Tag[] }
         <p className="text-sm text-muted-foreground">
           Actuel : {home.label} ({home.latitude.toFixed(4)}, {home.longitude.toFixed(4)})
         </p>
+        {addressDirty && <p className="text-sm text-destructive">Adresse modifiée : cliquez sur Localiser</p>}
         <label htmlFor="radius-km" className="flex items-center gap-2 text-sm">
           Rayon
           <Input
@@ -162,7 +166,7 @@ export function ProfileForm({ initial, tags }: { initial: Initial; tags: Tag[] }
       </section>
 
       <div className="flex items-center gap-3">
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" disabled={pending || addressDirty}>
           Enregistrer le profil
         </Button>
         {message && (
