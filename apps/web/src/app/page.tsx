@@ -2,7 +2,7 @@ import { loadIngestConfig } from '@novi/core';
 import { Suspense } from 'react';
 import { Explore } from '@/components/explore';
 import { FiltersBar } from '@/components/filters';
-import { availableTechs, listCompanies, parseFilters } from '@/lib/data';
+import { availableTechs, countCompanies, listCompanies, parseFilters } from '@/lib/data';
 import { db, getProfile } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
@@ -16,7 +16,7 @@ export default async function Home({
   const profile = getProfile();
   const companies = listCompanies(db(), profile, filters);
   const techs = availableTechs(db());
-  const noData = techs.length === 0 && companies.length === 0 && filters.techs.length === 0 && !filters.q;
+  const noData = countCompanies(db()) === 0;
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">

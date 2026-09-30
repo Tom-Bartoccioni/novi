@@ -131,3 +131,11 @@
     @apply font-sans;
   }
 }
+
+/* Marqueurs de la carte : la mise en avant se fait sur le point interne, MapLibre pilote le transform du bouton. */
+.novi-marker > span {
+  transition: transform 120ms;
+}
+.novi-marker--on > span {
+  transform: scale(1.6);
+}

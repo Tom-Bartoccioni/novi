@@ -235,6 +235,11 @@ export function availableTechs(db: Db): { slug: string; label: string; count: nu
     .all();
 }
 
+/** Nombre d'entreprises en base, toutes zones confondues : sert à distinguer « base vide » de « aucun résultat ». */
+export function countCompanies(db: Db): number {
+  return db.select({ n: count() }).from(companies).get()?.n ?? 0;
+}
+
 export type TechDetail = {
   slug: string;
   label: string;
