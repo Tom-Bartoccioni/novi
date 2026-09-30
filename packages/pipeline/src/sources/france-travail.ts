@@ -8,7 +8,7 @@ import { createLimiter } from '../lib/rate-limit';
 const TOKEN_URL = 'https://entreprise.francetravail.fr/connexion/oauth2/access_token?realm=/partenaire';
 const SEARCH_URL = 'https://api.francetravail.io/partenaire/offresdemploi/v2/offres/search';
 export const PAGE_SIZE = 150;
-export const MAX_INDEX = 1149;
+export const MAX_INDEX = 3149;
 const SCOPES = 'api_offresdemploiv2 o2dsoffre';
 
 export const offerSchema = z
