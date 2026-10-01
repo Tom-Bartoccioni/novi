@@ -6,7 +6,6 @@
     "allowJs": true,
     "incremental": true,
     "plugins": [{ "name": "next" }],
-    "baseUrl": ".",
     "paths": { "@/*": ["./src/*"] },
     "types": ["node", "react", "react-dom"]
   },
