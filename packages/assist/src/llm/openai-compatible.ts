@@ -1,4 +1,5 @@
-import { AssistError, LlmError } from '../errors';
+import { LlmError } from '../errors';
+import { assertValidApiKey, cancelledError, parseRetryAfter, timeoutError, unreachableError } from './shared';
 import { type GenerateInput, type GenerateResult, LLM_TIMEOUT_MS, type TextGenerator } from './types';
 
 export type OpenAiCompatibleOptions = {
@@ -21,55 +22,34 @@ async function ensureOk(response: Response): Promise<void> {
   await response.body?.cancel().catch(() => {});
   if (response.status === 401 || response.status === 403) throw new LlmError('unauthorized');
   if (response.status === 429) {
-    const retry = Number(response.headers.get('retry-after'));
     throw new LlmError('rate_limited', {
-      retryAfterSeconds: Number.isFinite(retry) && retry > 0 ? retry : undefined,
+      retryAfterSeconds: parseRetryAfter(response.headers.get('retry-after')),
     });
   }
   throw new LlmError('http', { status: response.status });
 }
 
-/** Retire la clé d'un message d'erreur, au cas où une bibliothèque réseau la recopierait. */
-function redact(message: string, apiKey: string): string {
-  return apiKey ? message.split(apiKey).join('…') : message;
-}
-
-/**
- * Convertit une erreur levée pendant l'appel ou la lecture du corps.
- * Une annulation par l'appelant est signalée avec le code `timeout` : un appelant qui réessaie
- * sur `timeout` doit d'abord vérifier son propre `signal.aborted`.
- */
+/** Convertit une erreur levée pendant l'appel ou la lecture du corps. */
 function toLlmError(
   err: unknown,
   caller: AbortSignal | undefined,
   timeout: AbortSignal,
-  timeoutMessage: string,
+  timeoutMs: number,
   apiKey: string,
 ): LlmError {
   if (err instanceof LlmError) return err;
-  if (caller?.aborted) return new LlmError('timeout', { message: 'Génération annulée' });
+  if (caller?.aborted) return cancelledError();
   const isAbort = err instanceof Error && (err.name === 'AbortError' || err.name === 'TimeoutError');
-  if (timeout.aborted || isAbort) return new LlmError('timeout', { message: timeoutMessage });
+  if (timeout.aborted || isAbort) return timeoutError(timeoutMs);
   if (err instanceof SyntaxError) return new LlmError('bad_response');
-  let detail = err instanceof Error ? err.message : String(err);
-  const cause = err instanceof Error ? (err.cause as { code?: unknown } | undefined) : undefined;
-  if (typeof cause?.code === 'string') detail += ` (${cause.code})`;
-  return new LlmError('http', { message: `Fournisseur LLM injoignable : ${redact(detail, apiKey)}` });
+  return unreachableError(err, apiKey);
 }
 
 export function createOpenAiCompatibleGenerator(opts: OpenAiCompatibleOptions): TextGenerator {
-  // Un espace ou un saut de ligne ferait échouer l'en-tête, et le message d'erreur recopierait la clé.
-  if (/[^\x21-\x7e]/.test(opts.apiKey)) {
-    throw new AssistError(
-      'llm_misconfigured',
-      'LLM_API_KEY contient des caractères invalides (espace, saut de ligne ?)',
-    );
-  }
+  assertValidApiKey(opts.apiKey);
   const fetchImpl = opts.fetchImpl ?? fetch;
   const url = `${opts.baseUrl.replace(/\/+$/, '')}/chat/completions`;
   const timeoutMs = opts.timeoutMs ?? LLM_TIMEOUT_MS;
-  const seconds = Math.max(1, Math.round(timeoutMs / 1000));
-  const timeoutMessage = `Délai dépassé (${seconds} s) en attendant le fournisseur LLM`;
 
   return {
     label: `openai-compatible/${opts.model}`,
@@ -95,7 +75,7 @@ export function createOpenAiCompatibleGenerator(opts: OpenAiCompatibleOptions): 
         // Le corps est lu sous le même signal : une coupure pendant la lecture reste un délai dépassé.
         json = (await response.json()) as ChatCompletion | null;
       } catch (err) {
-        throw toLlmError(err, signal, timeout, timeoutMessage, opts.apiKey);
+        throw toLlmError(err, signal, timeout, timeoutMs, opts.apiKey);
       }
       const choice = json?.choices?.[0];
       if (choice?.finish_reason === 'content_filter') throw new LlmError('refused');

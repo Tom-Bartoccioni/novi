@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const create = vi.fn();
+const construct = vi.fn();
 
 class APIError extends Error {
   status: number | undefined;
@@ -25,16 +26,24 @@ vi.mock('@anthropic-ai/sdk', () => {
     static RateLimitError = RateLimitError;
     static APIConnectionError = APIConnectionError;
     static APIConnectionTimeoutError = APIConnectionTimeoutError;
+    constructor(options: unknown) {
+      construct(options);
+    }
   }
   return { default: Anthropic };
 });
 
 import { createAnthropicGenerator } from '../src/llm/anthropic';
+import { LLM_TIMEOUT_MS } from '../src/llm/types';
 
 const input = { system: 'S', prompt: 'P', maxTokens: 100 };
+const ok = { model: 'm', stop_reason: 'end_turn', content: [{ type: 'text', text: 'OK' }] };
 
 describe('createAnthropicGenerator', () => {
-  beforeEach(() => create.mockReset());
+  beforeEach(() => {
+    create.mockReset();
+    construct.mockReset();
+  });
 
   it('sends system and user message and joins text blocks', async () => {
     create.mockResolvedValue({
@@ -56,8 +65,53 @@ describe('createAnthropicGenerator', () => {
         system: 'S',
         messages: [{ role: 'user', content: 'P' }],
       },
-      expect.objectContaining({ timeout: expect.any(Number) }),
+      { timeout: LLM_TIMEOUT_MS, signal: undefined },
     );
+  });
+  it('disables SDK retries and creates the client once', async () => {
+    create.mockResolvedValue(ok);
+    const gen = createAnthropicGenerator({ apiKey: 'k', model: 'm' });
+    expect(construct).not.toHaveBeenCalled();
+    await gen.generate(input);
+    await gen.generate(input);
+    expect(construct).toHaveBeenCalledTimes(1);
+    expect(construct).toHaveBeenCalledWith({ apiKey: 'k', baseURL: undefined, maxRetries: 0 });
+  });
+  it('passes a custom base URL to the SDK', async () => {
+    create.mockResolvedValue(ok);
+    const gen = createAnthropicGenerator({ apiKey: 'k', model: 'm', baseUrl: 'https://proxy.example' });
+    await gen.generate(input);
+    expect(construct).toHaveBeenCalledWith({ apiKey: 'k', baseURL: 'https://proxy.example', maxRetries: 0 });
+  });
+  it('forwards the caller signal', async () => {
+    create.mockResolvedValue(ok);
+    const controller = new AbortController();
+    await createAnthropicGenerator({ apiKey: 'k', model: 'm' }).generate(input, controller.signal);
+    expect(create).toHaveBeenCalledWith(expect.anything(), {
+      timeout: LLM_TIMEOUT_MS,
+      signal: controller.signal,
+    });
+  });
+  it('uses a custom timeout for the request and the message', async () => {
+    const gen = createAnthropicGenerator({ apiKey: 'k', model: 'm', timeoutMs: 45_000 });
+    create.mockRejectedValueOnce(new APIConnectionTimeoutError());
+    await expect(gen.generate(input)).rejects.toMatchObject({
+      code: 'timeout',
+      message: 'Délai dépassé (45 s) en attendant le fournisseur LLM',
+    });
+    expect(create).toHaveBeenCalledWith(expect.anything(), { timeout: 45_000, signal: undefined });
+  });
+  it('ignores non-text blocks', async () => {
+    create.mockResolvedValue({
+      model: 'm',
+      stop_reason: 'end_turn',
+      content: [
+        { type: 'thinking', thinking: 'réflexion', signature: 'x' },
+        { type: 'text', text: 'Réponse' },
+      ],
+    });
+    const r = await createAnthropicGenerator({ apiKey: 'k', model: 'm' }).generate(input);
+    expect(r.text).toBe('Réponse');
   });
   it('maps a refusal stop reason', async () => {
     create.mockResolvedValue({ model: 'm', stop_reason: 'refusal', content: [] });
@@ -68,12 +122,23 @@ describe('createAnthropicGenerator', () => {
     const gen = createAnthropicGenerator({ apiKey: 'k', model: 'm' });
     create.mockRejectedValueOnce(new AuthenticationError(401));
     await expect(gen.generate(input)).rejects.toMatchObject({ code: 'unauthorized' });
+    create.mockRejectedValueOnce(new PermissionDeniedError(403));
+    await expect(gen.generate(input)).rejects.toMatchObject({ code: 'unauthorized' });
     create.mockRejectedValueOnce(new RateLimitError(429));
-    await expect(gen.generate(input)).rejects.toMatchObject({ code: 'rate_limited' });
+    await expect(gen.generate(input)).rejects.toMatchObject({
+      code: 'rate_limited',
+      retryAfterSeconds: undefined,
+    });
     create.mockRejectedValueOnce(new APIConnectionTimeoutError());
-    await expect(gen.generate(input)).rejects.toMatchObject({ code: 'timeout' });
+    await expect(gen.generate(input)).rejects.toMatchObject({ code: 'timeout', message: /Délai dépassé/ });
     create.mockRejectedValueOnce(new APIError(500));
     await expect(gen.generate(input)).rejects.toMatchObject({ code: 'http', status: 500 });
+  });
+  it('reads retry-after on a rate limit', async () => {
+    const gen = createAnthropicGenerator({ apiKey: 'k', model: 'm' });
+    const err = Object.assign(new RateLimitError(429), { headers: new Headers({ 'retry-after': '30' }) });
+    create.mockRejectedValueOnce(err);
+    await expect(gen.generate(input)).rejects.toMatchObject({ code: 'rate_limited', retryAfterSeconds: 30 });
   });
   it('reports an unreachable provider explicitly', async () => {
     const gen = createAnthropicGenerator({ apiKey: 'k', model: 'm' });
@@ -82,6 +147,18 @@ describe('createAnthropicGenerator', () => {
       code: 'http',
       message: 'Fournisseur LLM injoignable : Connection error.',
     });
+    // Le SDK enveloppe l'erreur de fetch, qui porte elle-même le code système.
+    const wrapped = new APIConnectionError(undefined, 'Connection error.');
+    wrapped.cause = new TypeError('fetch failed', { cause: { code: 'ECONNREFUSED' } });
+    create.mockRejectedValueOnce(wrapped);
+    await expect(gen.generate(input)).rejects.toMatchObject({
+      message: 'Fournisseur LLM injoignable : Connection error. (ECONNREFUSED)',
+    });
+  });
+  it('rethrows errors that do not come from the SDK', async () => {
+    const boom = new TypeError('boom');
+    create.mockRejectedValueOnce(boom);
+    await expect(createAnthropicGenerator({ apiKey: 'k', model: 'm' }).generate(input)).rejects.toBe(boom);
   });
   it('rejects an API key with invalid characters without echoing it', () => {
     for (const apiKey of ['sk-ant abc', 'sk-ant-abc\n', 'sk-ant-é']) {
