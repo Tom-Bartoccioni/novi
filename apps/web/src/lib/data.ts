@@ -122,20 +122,6 @@ function offerTechSlugs(offer: { title: string; description: string | null }): s
   return detectTechs(`${offer.title}\n${offer.description ?? ''}`, TAGS, 0.8).map((d) => d.slug);
 }
 
-function activeOffersOf(db: Db, siren: string): ScoredOffer[] {
-  return db
-    .select({
-      id: jobOffers.id,
-      title: jobOffers.title,
-      description: jobOffers.description,
-      publishedAt: jobOffers.publishedAt,
-    })
-    .from(jobOffers)
-    .where(and(eq(jobOffers.siren, siren), eq(jobOffers.isActive, true)))
-    .all()
-    .map((o) => ({ id: o.id, techSlugs: offerTechSlugs(o), publishedAt: o.publishedAt }));
-}
-
 /** Score pur : aucune requête, toutes les données sont fournies par l'appelant. */
 function scoreFromParts(
   profile: Profile,
@@ -373,11 +359,12 @@ export function getCompanyDetail(
     ),
   }));
   const now = opts.now ?? new Date();
-  const offers = activeOffersOf(db, siren);
+  // Une seule requête alimente à la fois le score (technos détectées) et l'affichage des offres.
   const offerRows = db
     .select({
       id: jobOffers.id,
       title: jobOffers.title,
+      description: jobOffers.description,
       contractType: jobOffers.contractType,
       publishedAt: jobOffers.publishedAt,
       url: jobOffers.url,
@@ -386,6 +373,11 @@ export function getCompanyDetail(
     .where(and(eq(jobOffers.siren, siren), eq(jobOffers.isActive, true)))
     .orderBy(desc(jobOffers.publishedAt))
     .all();
+  const offers: ScoredOffer[] = offerRows.map((o) => ({
+    id: o.id,
+    techSlugs: offerTechSlugs(o),
+    publishedAt: o.publishedAt,
+  }));
   // Les offres non vues sont calculées avant l'enregistrement des vues : la fiche les signale une fois.
   let unseen: Set<string>;
   if (opts.markSeen) {
@@ -399,7 +391,9 @@ export function getCompanyDetail(
       );
     } catch (err) {
       // L'enregistrement des vues ne doit jamais casser l'affichage de la fiche.
-      console.warn(`offer_views : ${err instanceof Error ? err.message : String(err)}`);
+      console.warn(
+        `Enregistrement des vues impossible (siren ${siren}) : ${err instanceof Error ? err.message : String(err)}`,
+      );
       unseen = new Set();
     }
   } else {
@@ -407,7 +401,11 @@ export function getCompanyDetail(
     unseen = new Set(offerRows.filter((o) => !seen.has(o.id)).map((o) => o.id));
   }
   const activeOffers = offerRows.map((o) => ({
-    ...o,
+    id: o.id,
+    title: o.title,
+    contractType: o.contractType,
+    publishedAt: o.publishedAt,
+    url: o.url,
     isRecent: isRecentOffer(o.publishedAt, profile.newOfferDays, now),
     unseen: unseen.has(o.id),
   }));

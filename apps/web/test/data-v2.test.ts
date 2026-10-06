@@ -12,17 +12,22 @@ import { seededDb } from './helpers';
 
 const NOW = new Date('2026-10-06T12:00:00Z');
 const RECENT = '2026-10-05T09:00:00Z';
+const OLD = '2026-08-01T00:00:00Z';
 
+/** Cliken Web recrute avec une offre récente (D) ; Nice Tech Studio recrute avec une seule offre ancienne (E). */
 function withRecentOffer() {
   const db = seededDb();
   db.insert(jobOffers)
-    .values({
-      id: 'D',
-      title: 'Dev TypeScript',
-      description: 'TypeScript',
-      siren: '000000001',
-      publishedAt: RECENT,
-    })
+    .values([
+      {
+        id: 'D',
+        title: 'Dev TypeScript',
+        description: 'TypeScript',
+        siren: '000000001',
+        publishedAt: RECENT,
+      },
+      { id: 'E', title: 'Dev PHP', description: 'PHP', siren: '000000002', publishedAt: OLD },
+    ])
     .run();
   const profile = getDefaultProfile(db);
   db.update(profiles)
@@ -45,12 +50,18 @@ describe('listCompanies V2', () => {
     const items = listCompanies(db, profile, parseFilters({}), NOW);
     const cliken = items.find((c) => c.siren === '000000001');
     expect(cliken).toMatchObject({ recentOffers: 1, unseenOffers: 2, recruiting: true });
-    expect(items.find((c) => c.siren === '000000002')).toMatchObject({ recentOffers: 0, unseenOffers: 0 });
+    expect(items.find((c) => c.siren === '000000002')).toMatchObject({
+      recentOffers: 0,
+      unseenOffers: 1,
+      recruiting: true,
+    });
   });
-  it('filters on nouvelles', () => {
+  it('filters on nouvelles, unlike recruiting which keeps companies with only old offers', () => {
     const { db, profile } = withRecentOffer();
-    const items = listCompanies(db, profile, parseFilters({ nouvelles: '1' }), NOW);
-    expect(items.map((c) => c.siren)).toEqual(['000000001']);
+    const nouvelles = listCompanies(db, profile, parseFilters({ nouvelles: '1' }), NOW);
+    expect(nouvelles.map((c) => c.siren)).toEqual(['000000001']);
+    const recruiting = listCompanies(db, profile, parseFilters({ recruiting: '1' }), NOW);
+    expect(recruiting.map((c) => c.siren).sort()).toEqual(['000000001', '000000002']);
   });
   it('uses the profile window in the score', () => {
     const { db, profile } = withRecentOffer();
@@ -86,6 +97,19 @@ describe('getCompanyDetail V2', () => {
     getCompanyDetail(db, profile, '000000001');
     expect(db.select().from(offerViews).all()).toHaveLength(0);
   });
+  it('reads unseen from the recorded views without markSeen', () => {
+    const { db, profile } = withRecentOffer();
+    const unseenOf = () =>
+      Object.fromEntries(
+        (getCompanyDetail(db, profile, '000000001', { now: NOW })?.activeOffers ?? []).map((o) => [
+          o.id,
+          o.unseen,
+        ]),
+      );
+    expect(unseenOf()).toEqual({ D: true, A: true });
+    db.insert(offerViews).values({ profileId: profile.id, offerId: 'A' }).run();
+    expect(unseenOf()).toEqual({ D: true, A: false });
+  });
   it('returns the cover letters of the company', () => {
     const { db, profile } = withRecentOffer();
     expect(getCompanyDetail(db, profile, '000000001')?.letters).toEqual([]);
@@ -95,9 +119,9 @@ describe('getCompanyDetail V2', () => {
 describe('countUnseenOffersInRadius', () => {
   it('counts active linked offers of companies in radius not yet viewed', () => {
     const { db, profile } = withRecentOffer();
-    expect(countUnseenOffersInRadius(db, profile)).toBe(2);
+    expect(countUnseenOffersInRadius(db, profile)).toBe(3);
     db.insert(offerViews).values({ profileId: profile.id, offerId: 'D' }).run();
-    expect(countUnseenOffersInRadius(db, profile)).toBe(1);
+    expect(countUnseenOffersInRadius(db, profile)).toBe(2);
   });
 });
 
