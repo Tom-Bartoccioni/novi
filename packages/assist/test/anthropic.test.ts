@@ -12,7 +12,9 @@ class APIError extends Error {
 class AuthenticationError extends APIError {}
 class PermissionDeniedError extends APIError {}
 class RateLimitError extends APIError {}
-class APIConnectionTimeoutError extends APIError {}
+class APIConnectionError extends APIError {}
+// Comme dans le SDK : le délai dépassé est une erreur de connexion particulière.
+class APIConnectionTimeoutError extends APIConnectionError {}
 
 vi.mock('@anthropic-ai/sdk', () => {
   class Anthropic {
@@ -21,6 +23,7 @@ vi.mock('@anthropic-ai/sdk', () => {
     static AuthenticationError = AuthenticationError;
     static PermissionDeniedError = PermissionDeniedError;
     static RateLimitError = RateLimitError;
+    static APIConnectionError = APIConnectionError;
     static APIConnectionTimeoutError = APIConnectionTimeoutError;
   }
   return { default: Anthropic };
@@ -71,6 +74,24 @@ describe('createAnthropicGenerator', () => {
     await expect(gen.generate(input)).rejects.toMatchObject({ code: 'timeout' });
     create.mockRejectedValueOnce(new APIError(500));
     await expect(gen.generate(input)).rejects.toMatchObject({ code: 'http', status: 500 });
+  });
+  it('reports an unreachable provider explicitly', async () => {
+    const gen = createAnthropicGenerator({ apiKey: 'k', model: 'm' });
+    create.mockRejectedValueOnce(new APIConnectionError(undefined, 'Connection error.'));
+    await expect(gen.generate(input)).rejects.toMatchObject({
+      code: 'http',
+      message: 'Fournisseur LLM injoignable : Connection error.',
+    });
+  });
+  it('rejects an API key with invalid characters without echoing it', () => {
+    for (const apiKey of ['sk-ant abc', 'sk-ant-abc\n', 'sk-ant-é']) {
+      expect(() => createAnthropicGenerator({ apiKey, model: 'm' })).toThrow(
+        expect.objectContaining({
+          code: 'llm_misconfigured',
+          message: expect.not.stringContaining('sk-ant'),
+        }),
+      );
+    }
   });
   it('reports a caller cancellation as such', async () => {
     const gen = createAnthropicGenerator({ apiKey: 'k', model: 'm' });

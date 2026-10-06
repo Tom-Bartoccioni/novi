@@ -1,4 +1,4 @@
-import { LlmError } from '../errors';
+import { AssistError, LlmError } from '../errors';
 import { type GenerateInput, type GenerateResult, LLM_TIMEOUT_MS, type TextGenerator } from './types';
 
 export const ANTHROPIC_DEFAULT_MODEL = 'claude-opus-5-5';
@@ -6,6 +6,13 @@ export const ANTHROPIC_DEFAULT_MODEL = 'claude-opus-5-5';
 export type AnthropicOptions = { apiKey: string; model: string; timeoutMs?: number };
 
 export function createAnthropicGenerator(opts: AnthropicOptions): TextGenerator {
+  // Comme pour l'adaptateur compatible OpenAI : une clé mal copiée échoue tôt, sans être recopiée.
+  if (/[^\x21-\x7e]/.test(opts.apiKey)) {
+    throw new AssistError(
+      'llm_misconfigured',
+      'LLM_API_KEY contient des caractères invalides (espace, saut de ligne ?)',
+    );
+  }
   const timeoutMs = opts.timeoutMs ?? LLM_TIMEOUT_MS;
   return {
     label: `anthropic/${opts.model}`,
@@ -39,6 +46,9 @@ export function createAnthropicGenerator(opts: AnthropicOptions): TextGenerator 
           throw new LlmError('unauthorized');
         if (err instanceof Anthropic.RateLimitError) throw new LlmError('rate_limited');
         if (err instanceof Anthropic.APIConnectionTimeoutError) throw new LlmError('timeout');
+        // Après le délai : dans le SDK, `APIConnectionTimeoutError` hérite de `APIConnectionError`.
+        if (err instanceof Anthropic.APIConnectionError)
+          throw new LlmError('http', { message: `Fournisseur LLM injoignable : ${err.message}` });
         if (err instanceof Anthropic.APIError) throw new LlmError('http', { status: err.status });
         throw err;
       }
