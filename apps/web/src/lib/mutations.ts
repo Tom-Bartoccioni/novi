@@ -1,3 +1,4 @@
+import type { IdentityHints } from '@novi/assist';
 import { detectTechs, HEADCOUNT_LABELS, loadTechTags } from '@novi/core';
 import {
   COMPANY_STATUSES,
@@ -95,7 +96,39 @@ export type ProfileInput = {
   radiusKm: number;
   skills: string[];
   headcountRanges: string[];
+  // V2, facultatifs : absents, les colonnes correspondantes ne sont pas modifiées.
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string;
+  postalAddress?: string;
+  links?: string[];
+  revealFirstName?: boolean;
+  newOfferDays?: number;
 };
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+function nullable(value: string | undefined): string | null {
+  const v = value?.trim();
+  return v ? v : null;
+}
+
+function normalizeLinks(links: string[]): string[] {
+  return links
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .map((l) => {
+      const withScheme = /^https?:\/\//i.test(l) ? l : `https://${l}`;
+      try {
+        const url = new URL(withScheme);
+        if (!/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(url.hostname)) throw new Error();
+        return withScheme;
+      } catch {
+        throw new Error(`Lien invalide : ${l}`);
+      }
+    });
+}
 
 export function applyProfile(database: Db, profileId: number, input: ProfileInput): void {
   if (!(input.radiusKm >= 1 && input.radiusKm <= 200))
@@ -105,17 +138,50 @@ export function applyProfile(database: Db, profileId: number, input: ProfileInpu
     throw new Error('Latitude invalide');
   if (!(Number.isFinite(input.homeLongitude) && Math.abs(input.homeLongitude) <= 180))
     throw new Error('Longitude invalide');
+  if (
+    input.newOfferDays !== undefined &&
+    !(Number.isInteger(input.newOfferDays) && input.newOfferDays >= 1 && input.newOfferDays <= 90)
+  )
+    throw new Error('La fenêtre de nouveauté doit être un nombre entier de jours entre 1 et 90');
+  const email = nullable(input.email);
+  if (email && !EMAIL_RE.test(email)) throw new Error('Adresse e-mail invalide');
   const known = new Set(loadTechTags().map((t) => t.slug));
   const knownRanges = new Set(Object.keys(HEADCOUNT_LABELS));
+  const set: Partial<typeof profiles.$inferInsert> = {
+    homeLabel: input.homeLabel.trim(),
+    homeLatitude: input.homeLatitude,
+    homeLongitude: input.homeLongitude,
+    radiusKm: input.radiusKm,
+    skills: input.skills.filter((s) => known.has(s)),
+    headcountRanges: input.headcountRanges.filter((r) => knownRanges.has(r)),
+  };
+  if (input.firstName !== undefined) set.firstName = nullable(input.firstName);
+  if (input.lastName !== undefined) set.lastName = nullable(input.lastName);
+  if (input.email !== undefined) set.email = email;
+  if (input.phone !== undefined) set.phone = nullable(input.phone);
+  if (input.postalAddress !== undefined) set.postalAddress = nullable(input.postalAddress);
+  if (input.links !== undefined) set.links = normalizeLinks(input.links);
+  if (input.revealFirstName !== undefined) set.revealFirstName = input.revealFirstName;
+  if (input.newOfferDays !== undefined) set.newOfferDays = input.newOfferDays;
+  database.update(profiles).set(set).where(eq(profiles.id, profileId)).run();
+}
+
+export type CvInput = { filename: string; text: string; pages: number };
+
+/** Remplace le CV du profil et complète les champs d'identité encore vides avec les indices détectés. */
+export function applyCv(database: Db, profileId: number, cv: CvInput, hints: IdentityHints): void {
+  const current = database.select().from(profiles).where(eq(profiles.id, profileId)).get();
+  if (!current) throw new Error('Profil introuvable');
   database
     .update(profiles)
     .set({
-      homeLabel: input.homeLabel.trim(),
-      homeLatitude: input.homeLatitude,
-      homeLongitude: input.homeLongitude,
-      radiusKm: input.radiusKm,
-      skills: input.skills.filter((s) => known.has(s)),
-      headcountRanges: input.headcountRanges.filter((r) => knownRanges.has(r)),
+      cvFilename: cv.filename,
+      cvText: cv.text,
+      cvPages: cv.pages,
+      cvUploadedAt: new Date().toISOString(),
+      email: current.email ?? hints.email ?? null,
+      phone: current.phone ?? hints.phone ?? null,
+      links: current.links.length > 0 ? current.links : hints.links,
     })
     .where(eq(profiles.id, profileId))
     .run();
