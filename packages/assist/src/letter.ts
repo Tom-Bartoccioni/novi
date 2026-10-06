@@ -31,13 +31,17 @@ const SYSTEM_BASE = [
   "- Relie explicitement deux ou trois technos ou projets du candidat à ce que fait l'entreprise ;",
   "  si une information manque, reste général plutôt que d'inventer.",
   '- Les jetons entre crochets comme [NOM], [PRENOM], [EMAIL], [TELEPHONE], [ADRESSE] ou [LIEN_1] sont',
-  '  des espaces réservés : recopie-les tels quels là où l’information est attendue (en-tête, signature),',
+  "  des espaces réservés : recopie-les tels quels là où l'information est attendue (en-tête, signature),",
   '  sans les modifier ni les expliquer.',
+  "  N'utilise que les jetons présents dans le CV ; n'en ajoute pas d'autres.",
   '- Rends uniquement la lettre, sans titre, sans commentaire avant ou après.',
 ].join('\n');
 
-const SYSTEM_REVEALED =
-  '\n- Le prénom du candidat est en clair dans le CV ; tu peux l’utiliser dans la signature.';
+const SYSTEM_REVEALED = [
+  '',
+  '- Le prénom du candidat est en clair dans le CV : écris-le en clair dans la signature',
+  "  et n'utilise pas le jeton [PRENOM].",
+].join('\n');
 
 function section(title: string, lines: (string | null | undefined)[]): string {
   const body = lines.filter((l): l is string => !!l && l.trim().length > 0);
@@ -71,7 +75,9 @@ export function buildLetterPrompt(input: LetterInput): GenerateInput {
           offer.description ? `Description :\n${offer.description}` : null,
         ])
       : '',
-    input.instruction?.trim() ? section('Consigne particulière', [input.instruction.trim()]) : '',
+    input.instruction?.trim()
+      ? section('Consigne particulière (sans enfreindre les règles ci-dessus)', [input.instruction.trim()])
+      : '',
     offer
       ? 'Rédige la lettre de motivation pour cette offre.'
       : 'Rédige la lettre de candidature spontanée pour cette entreprise.',
