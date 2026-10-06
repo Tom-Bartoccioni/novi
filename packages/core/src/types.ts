@@ -21,13 +21,15 @@ export type ScoreProfile = {
   skills: string[];
   radiusKm: number;
   headcountRanges: string[];
+  /** Fenêtre de « nouveauté » d'une offre, en jours (7 par défaut). */
+  newOfferDays?: number;
 };
 
 export type ScoreCompany = {
   headcountRange: string | null;
   techs: { slug: string; confidence: number }[];
-  /** Pour chaque offre active, les slugs de technos détectées dans l'offre. */
-  activeOffers: { techSlugs: string[] }[];
+  /** Pour chaque offre active, les slugs de technos détectées dans l'offre et sa date de publication. */
+  activeOffers: { techSlugs: string[]; publishedAt?: string | null }[];
   signals: { kind: string; value: number | null }[];
 };
 

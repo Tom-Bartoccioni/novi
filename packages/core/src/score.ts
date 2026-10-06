@@ -6,15 +6,35 @@ const TECH_CONFIDENCE_CAP = 4;
 const DISTANCE_MAX = 20;
 const HEADCOUNT_MAX = 15;
 const OFFER_MATCH = 15;
+const OFFER_MATCH_RECENT = 20;
 const OFFER_NO_MATCH = 8;
+const OFFER_NO_MATCH_RECENT = 10;
+export const DEFAULT_NEW_OFFER_DAYS = 7;
 const SIGNALS_MAX = 10;
 const ESN_PENALTY = -20;
+
+/** Vrai si l'offre a été publiée il y a moins de `days` jours. Dates invalides ou absentes : faux. */
+export function isRecentOffer(
+  publishedAt: string | null | undefined,
+  days: number,
+  now: Date = new Date(),
+): boolean {
+  if (!publishedAt) return false;
+  const t = Date.parse(publishedAt);
+  if (Number.isNaN(t)) return false;
+  return now.getTime() - t < days * 24 * 60 * 60 * 1000;
+}
 
 function round1(n: number): number {
   return Math.round(n * 10) / 10;
 }
 
-export function scoreCompany(profile: ScoreProfile, company: ScoreCompany, distanceKm: number): ScoreResult {
+export function scoreCompany(
+  profile: ScoreProfile,
+  company: ScoreCompany,
+  distanceKm: number,
+  now: Date = new Date(),
+): ScoreResult {
   const lines: ScoreLine[] = [];
   const skills = new Set(profile.skills);
 
@@ -49,18 +69,32 @@ export function scoreCompany(profile: ScoreProfile, company: ScoreCompany, dista
     lines.push({ label: `Taille souhaitée (${label})`, points: HEADCOUNT_MAX });
   }
 
-  // Offres actives.
+  // Offres actives : une offre correspondant au profil compte plus, une offre récente encore plus.
   const active = company.activeOffers.length;
   if (active > 0) {
-    const matching = company.activeOffers.filter((o) => o.techSlugs.some((s) => skills.has(s))).length;
-    if (matching > 0) {
+    const days = profile.newOfferDays ?? DEFAULT_NEW_OFFER_DAYS;
+    const matching = company.activeOffers.filter((o) => o.techSlugs.some((s) => skills.has(s)));
+    const recentMatching = matching.filter((o) => isRecentOffer(o.publishedAt, days, now)).length;
+    const anyRecent = company.activeOffers.some((o) => isRecentOffer(o.publishedAt, days, now));
+    const plural = (n: number) => (n > 1 ? 's' : '');
+    if (recentMatching > 0) {
       lines.push({
-        label: `${matching} offre${matching > 1 ? 's' : ''} active${matching > 1 ? 's' : ''} correspondant au profil`,
+        label: `${recentMatching} offre${plural(recentMatching)} récente${plural(recentMatching)} correspondant au profil`,
+        points: OFFER_MATCH_RECENT,
+      });
+    } else if (matching.length > 0) {
+      lines.push({
+        label: `${matching.length} offre${plural(matching.length)} active${plural(matching.length)} correspondant au profil`,
         points: OFFER_MATCH,
+      });
+    } else if (anyRecent) {
+      lines.push({
+        label: `${active} offre${plural(active)} active${plural(active)}, dont une récente`,
+        points: OFFER_NO_MATCH_RECENT,
       });
     } else {
       lines.push({
-        label: `${active} offre${active > 1 ? 's' : ''} active${active > 1 ? 's' : ''}`,
+        label: `${active} offre${plural(active)} active${plural(active)}`,
         points: OFFER_NO_MATCH,
       });
     }

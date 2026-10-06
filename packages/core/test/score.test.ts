@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { scoreCompany } from '../src/score';
+import { isRecentOffer, scoreCompany } from '../src/score';
 import type { ScoreCompany, ScoreProfile } from '../src/types';
 
 const profile: ScoreProfile = {
@@ -118,5 +118,66 @@ describe('scoreCompany', () => {
     );
     expect(r.lines.filter((l) => l.label === 'GitHub actif')).toHaveLength(1);
     expect(r.lines).toContainEqual({ label: '0 km', points: 20 });
+  });
+});
+
+describe('recent offers', () => {
+  const now = new Date('2026-10-06T12:00:00Z');
+  const recent = '2026-10-03T08:00:00Z';
+  const old = '2026-09-01T08:00:00Z';
+
+  it('isRecentOffer compares against newOfferDays', () => {
+    expect(isRecentOffer(recent, 7, now)).toBe(true);
+    expect(isRecentOffer(old, 7, now)).toBe(false);
+    expect(isRecentOffer(null, 7, now)).toBe(false);
+    expect(isRecentOffer('n/a', 7, now)).toBe(false);
+    expect(isRecentOffer(old, 60, now)).toBe(true);
+  });
+  it('gives 20 points for a matching recent offer', () => {
+    const r = scoreCompany(
+      { ...profile, newOfferDays: 7 },
+      { ...base, headcountRange: null, activeOffers: [{ techSlugs: ['react'], publishedAt: recent }] },
+      30,
+      now,
+    );
+    expect(r.lines).toContainEqual({ label: '1 offre récente correspondant au profil', points: 20 });
+  });
+  it('gives 15 points for a matching but old offer', () => {
+    const r = scoreCompany(
+      { ...profile, newOfferDays: 7 },
+      { ...base, headcountRange: null, activeOffers: [{ techSlugs: ['react'], publishedAt: old }] },
+      30,
+      now,
+    );
+    expect(r.lines).toContainEqual({ label: '1 offre active correspondant au profil', points: 15 });
+  });
+  it('gives 10 points for recent offers without a match, 8 otherwise', () => {
+    const recentNoMatch = scoreCompany(
+      { ...profile, newOfferDays: 7 },
+      {
+        ...base,
+        headcountRange: null,
+        activeOffers: [{ techSlugs: ['php'], publishedAt: recent }, { techSlugs: [] }],
+      },
+      30,
+      now,
+    );
+    expect(recentNoMatch.lines).toContainEqual({ label: '2 offres actives, dont une récente', points: 10 });
+    const oldNoMatch = scoreCompany(
+      { ...profile, newOfferDays: 7 },
+      { ...base, headcountRange: null, activeOffers: [{ techSlugs: ['php'], publishedAt: old }] },
+      30,
+      now,
+    );
+    expect(oldNoMatch.lines).toContainEqual({ label: '1 offre active', points: 8 });
+  });
+  it('defaults newOfferDays to 7 when the profile omits it', () => {
+    const r = scoreCompany(
+      profile,
+      { ...base, headcountRange: null, activeOffers: [{ techSlugs: ['react'], publishedAt: recent }] },
+      30,
+      now,
+    );
+    expect(r.lines[0]?.points).toBe(20);
   });
 });
