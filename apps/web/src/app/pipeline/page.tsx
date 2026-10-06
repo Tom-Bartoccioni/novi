@@ -35,10 +35,31 @@ function keyedErrors(errors: RunWithStatus['errors']) {
 }
 
 export default function PipelinePage() {
-  const { runs, counts } = pipelineOverview(db());
+  const { runs, counts, lastRefresh, refreshStale } = pipelineOverview(db());
   return (
     <div className="space-y-6">
       <h1 className="text-xl font-semibold">Pipeline</h1>
+      <div className="rounded-lg border p-3 text-sm">
+        {lastRefresh ? (
+          <p>
+            Dernier refresh : {formatDate(lastRefresh.finishedAt)}
+            {lastRefresh.stats
+              ? ` (${lastRefresh.stats.newOffers ?? 0} nouvelle(s) offre(s), ${lastRefresh.stats.linked ?? 0} rattachée(s))`
+              : ''}
+            {refreshStale && (
+              <span className="ml-2 text-destructive">
+                Le rafraîchissement automatique semble arrêté : relancer{' '}
+                <code className="font-mono">pwsh scripts/install-refresh-task.ps1</code>.
+              </span>
+            )}
+          </p>
+        ) : (
+          <p className="text-muted-foreground">
+            Aucun refresh automatique enregistré. Installer la tâche planifiée :{' '}
+            <code className="font-mono">pwsh scripts/install-refresh-task.ps1</code>.
+          </p>
+        )}
+      </div>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
         {Object.entries(counts).map(([key, value]) => (
           <div key={key} className="rounded-lg border p-3">
