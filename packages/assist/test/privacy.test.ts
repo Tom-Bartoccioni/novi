@@ -47,6 +47,14 @@ describe('anonymize', () => {
     const out = anonymize('Réf 1006 12 34 56 78 et 06 12 34 56 78', { ...identity, phone: null });
     expect(out).toBe('Réf 1006 12 34 56 78 et [TELEPHONE]');
   });
+  it('swallows brackets around undeclared emails and phones', () => {
+    const out = anonymize('Écrire à [autre@mail.fr] ou [06 98 76 54 32]', {
+      ...identity,
+      email: null,
+      phone: null,
+    });
+    expect(out).toBe('Écrire à [EMAIL] ou [TELEPHONE]');
+  });
   it('catches international phone prefixes', () => {
     const out = anonymize('Tél. +33 (0)6 12 34 56 78 ou 0033 6 12 34 56 78', { ...identity, phone: null });
     expect(out).toBe('Tél. [TELEPHONE] ou [TELEPHONE]');
@@ -99,6 +107,15 @@ describe('restore', () => {
     expect(restore('Bien à vous,\n[PRENOM] [NOM]\n[NOM] [PRENOM]', { ...identity, firstName: null })).toBe(
       'Bien à vous,\nDupont\nDupont',
     );
+  });
+  it('drops the blank before an empty token, non-breaking spaces included', () => {
+    const noFirstName = { ...identity, firstName: null };
+    expect(restore('Signé [PRENOM], ok', noFirstName)).toBe('Signé, ok');
+    expect(restore('Signé\u00A0[PRENOM], ok', noFirstName)).toBe('Signé, ok');
+    expect(restore('Signé [NOM]\u202F[PRENOM]\u202F!', noFirstName)).toBe('Signé Dupont\u202F!');
+  });
+  it('leaves one space between two empty tokens sharing it', () => {
+    expect(restore('a [PRENOM] [LIEN_3] b', { ...identity, firstName: null, links: [] })).toBe('a b');
   });
   it('treats tabs like spaces around an empty token', () => {
     expect(restore('Nom :\t[PRENOM]\t[NOM]', { ...identity, firstName: null })).toBe('Nom :\tDupont');

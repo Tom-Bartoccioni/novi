@@ -40,8 +40,12 @@ export const EMAIL_PATTERN = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/;
  */
 export const PHONE_PATTERN =
   /(?<!\d)(?:(?:\+33|0033)[\s.-]?(?:\(0\))?[\s.-]?[1-9]|0[1-9])(?:[\s.-]?\d{2}){4}(?!\d)/;
-const EMAIL_RE = new RegExp(EMAIL_PATTERN.source, 'g');
-const PHONE_RE = new RegExp(PHONE_PATTERN.source, 'g');
+/** Version globale qui avale aussi une paire de crochets autour, pour ne pas fabriquer « [[EMAIL]] ». */
+function bracketedGlobal(pattern: RegExp): RegExp {
+  return new RegExp(`\\[(?:${pattern.source})\\]|(?:${pattern.source})`, 'g');
+}
+const EMAIL_RE = bracketedGlobal(EMAIL_PATTERN);
+const PHONE_RE = bracketedGlobal(PHONE_PATTERN);
 
 /**
  * Replie chaque unité de code sur sa lettre de base en minuscule, en gardant la même longueur que l'entrée,
@@ -138,8 +142,9 @@ export function anonymize(text: string, identity: Identity): string {
 const PROTECT_MARK = '\u0000';
 const UNPROTECT_RE = new RegExp(`${PROTECT_MARK}(${TOKEN_ALT})${PROTECT_MARK}`, 'g');
 
+/** Espace, tabulation, espace insécable ou espace fine insécable. */
 function isBlank(ch: string | undefined): boolean {
-  return ch === ' ' || ch === '\t';
+  return ch === ' ' || ch === '\t' || ch === '\u00A0' || ch === '\u202F';
 }
 
 /**
