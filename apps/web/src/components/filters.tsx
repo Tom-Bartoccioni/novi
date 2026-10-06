@@ -125,6 +125,14 @@ export function FiltersBar({
           />
           Nouvelles offres
         </label>
+        <label className="flex items-center gap-1">
+          <input
+            type="checkbox"
+            checked={filters.nonvues}
+            onChange={(e) => update({ nonvues: e.target.checked ? '1' : null })}
+          />
+          Offres jamais consultées
+        </label>
       </div>
       <div className="flex flex-wrap gap-1">
         {headcountCodes.map((code) => (

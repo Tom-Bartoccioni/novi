@@ -38,6 +38,7 @@ export type Filters = {
   headcount: string[];
   recruiting: boolean;
   nouvelles: boolean;
+  nonvues: boolean;
   status: CompanyStatus | null;
   sort: Sort;
   q: string;
@@ -66,6 +67,7 @@ export function parseFilters(params: SearchParams): Filters {
     headcount: list(params.headcount),
     recruiting: first(params.recruiting) === '1',
     nouvelles: first(params.nouvelles) === '1',
+    nonvues: first(params.nonvues) === '1',
     status: STATUSES.includes(status) ? status : null,
     sort: SORTS.includes(sort) ? sort : 'score',
     q: first(params.q).trim(),
@@ -216,6 +218,7 @@ export function listCompanies(
     if (filters.headcount.length > 0 && !filters.headcount.includes(c.headcountRange ?? '')) continue;
     if (filters.recruiting && !recruiting) continue;
     if (filters.nouvelles && recentOffers === 0) continue;
+    if (filters.nonvues && unseenOffers === 0) continue;
     if (filters.status && status !== filters.status) continue;
     if (q && !`${c.name} ${c.legalName} ${c.city ?? ''}`.toLowerCase().includes(q)) continue;
     items.push({

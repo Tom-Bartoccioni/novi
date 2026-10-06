@@ -47,6 +47,11 @@ export function CompanyList({
                     Nouveau ×{c.recentOffers}
                   </Badge>
                 )}
+                {c.unseenOffers > 0 && (
+                  <Badge variant="outline" className="text-muted-foreground">
+                    Non vue ×{c.unseenOffers}
+                  </Badge>
+                )}
                 {c.recruiting && <TechBadge label="Recrute" highlighted />}
                 <StatusBadge status={c.status} />
               </div>

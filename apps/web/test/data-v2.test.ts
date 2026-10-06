@@ -42,6 +42,10 @@ describe('parseFilters', () => {
     expect(parseFilters({ nouvelles: '1' }).nouvelles).toBe(true);
     expect(parseFilters({}).nouvelles).toBe(false);
   });
+  it('reads the nonvues flag', () => {
+    expect(parseFilters({ nonvues: '1' }).nonvues).toBe(true);
+    expect(parseFilters({}).nonvues).toBe(false);
+  });
 });
 
 describe('listCompanies V2', () => {
@@ -77,6 +81,23 @@ describe('listCompanies V2', () => {
     db.insert(offerViews).values({ profileId: profile.id, offerId: 'A' }).run();
     const cliken = listCompanies(db, profile, parseFilters({}), NOW).find((c) => c.siren === '000000001');
     expect(cliken?.unseenOffers).toBe(1);
+  });
+  it('filters on nonvues, dropping a company once all its offers were viewed', () => {
+    const { db, profile } = withRecentOffer();
+    const sirens = () =>
+      listCompanies(db, profile, parseFilters({ nonvues: '1' }), NOW)
+        .map((c) => c.siren)
+        .sort();
+    expect(sirens()).toContain('000000001');
+    expect(sirens()).toContain('000000002');
+    db.insert(offerViews)
+      .values([
+        { profileId: profile.id, offerId: 'A' },
+        { profileId: profile.id, offerId: 'D' },
+      ])
+      .run();
+    expect(sirens()).not.toContain('000000001');
+    expect(sirens()).toContain('000000002');
   });
 });
 

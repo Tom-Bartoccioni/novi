@@ -52,8 +52,8 @@ export default async function Home({
           {unseen > 0 && (
             <p className="rounded-md border border-orange-600/40 bg-orange-50 px-3 py-2 text-sm dark:bg-orange-950/30">
               {unseen} offre{unseen > 1 ? 's' : ''} jamais consultée{unseen > 1 ? 's' : ''} dans votre rayon.{' '}
-              <Link href="/?nouvelles=1" className="underline">
-                Voir les nouvelles offres
+              <Link href="/?nonvues=1" className="underline">
+                Voir les entreprises concernées
               </Link>
             </p>
           )}

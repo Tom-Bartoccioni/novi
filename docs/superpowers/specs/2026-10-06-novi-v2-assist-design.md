@@ -237,9 +237,9 @@ Toutes ces valeurs sont enregistrées par le bouton « Enregistrer le profil » 
 
 - `CompanyListItem` gagne `recentOffers: number` et `unseenOffers: number`.
 - Carte : couleur de marqueur orange `#ea580c` avec halo CSS si `recentOffers > 0`, sinon vert si `recruiting`, sinon bleu. Légende de trois pastilles sous la carte.
-- Liste : badge « Nouveau ×N » quand `recentOffers > 0`.
-- Filtres : puce « Nouvelles offres » (paramètre d'URL `nouvelles=1`) en tête, qui ne garde que `recentOffers > 0`.
-- Bandeau en haut de page si des offres actives dans le rayon ne sont dans `offer_views` pour aucune entreprise consultée : « N offres jamais consultées », lien vers le filtre. Calcul : offres actives rattachées à une entreprise du rayon et absentes de `offer_views`.
+- Liste : badge « Nouveau ×N » quand `recentOffers > 0`, puis badge neutre « Non vue ×N » quand `unseenOffers > 0`.
+- Filtres : case « Nouvelles offres » (paramètre d'URL `nouvelles=1`), qui ne garde que `recentOffers > 0`, et case « Offres jamais consultées » (paramètre `nonvues=1`), qui ne garde que `unseenOffers > 0`.
+- Bandeau en haut de page si des offres actives dans le rayon sont absentes de `offer_views` : « N offres jamais consultées », lien « Voir les entreprises concernées » vers le filtre `nonvues=1` (et non `nouvelles=1` : une offre jamais consultée n'est pas forcément récente). Calcul : offres actives rattachées à une entreprise du rayon et absentes de `offer_views`.
 
 ### 7.4 Pipeline (`/pipeline`)
 
