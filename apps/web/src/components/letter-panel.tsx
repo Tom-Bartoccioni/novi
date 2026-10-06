@@ -41,7 +41,9 @@ export function LetterPanel({
   const [history, setHistory] = useState(letters);
   const [showPrompt, setShowPrompt] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  // Élément copié : 'result' pour la lettre affichée, sinon l'id d'une lettre de l'historique.
+  const [copied, setCopied] = useState<'result' | number | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
   const [pending, start] = useTransition();
 
   if (!availability.ok) {
@@ -60,24 +62,53 @@ export function LetterPanel({
     );
   }
 
+  // Changer de cible efface la lettre affichée : une lettre spontanée ne doit pas apparaître sous une offre.
+  const selectTarget = (next: Target) => {
+    if (target?.offerId === next.offerId) return;
+    setTarget(next);
+    setResult(null);
+    setContent('');
+    setShowPrompt(false);
+    setError(null);
+  };
+
   const run = () => {
     if (!target) return;
     setError(null);
     start(async () => {
-      const r = await generateLetter({ siren, offerId: target.offerId, instruction });
-      if (r.ok) {
-        setResult({ letter: r.letter, sentPrompt: r.sentPrompt });
-        setContent(r.letter.content);
-        setHistory((h) => [r.letter, ...h]);
-      } else setError(r.error);
+      try {
+        const r = await generateLetter({ siren, offerId: target.offerId, instruction });
+        if (r.ok) {
+          setResult({ letter: r.letter, sentPrompt: r.sentPrompt });
+          setContent(r.letter.content);
+          setHistory((h) => [r.letter, ...h]);
+        } else setError(r.error);
+      } catch {
+        setError('Erreur réseau : réessayez');
+      }
     });
   };
 
-  const copy = async (text: string) => {
+  const remove = async (id: number) => {
+    setDeletingId(id);
+    try {
+      const r = await deleteLetter(id, siren);
+      if (r.ok) {
+        setHistory((h) => h.filter((x) => x.id !== id));
+        setError(null);
+      } else setError(r.error);
+    } catch {
+      setError('Erreur réseau : réessayez');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const copy = async (text: string, key: 'result' | number) => {
     try {
       await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
+      setCopied(key);
+      setTimeout(() => setCopied((k) => (k === key ? null : k)), 1500);
     } catch {
       setError('Copie impossible : sélectionnez le texte à la main');
     }
@@ -90,7 +121,7 @@ export function LetterPanel({
           type="button"
           variant={target && !target.offerId ? 'default' : 'outline'}
           size="sm"
-          onClick={() => setTarget({ offerId: null, title: 'Candidature spontanée' })}
+          onClick={() => selectTarget({ offerId: null, title: 'Candidature spontanée' })}
         >
           Lettre spontanée
         </Button>
@@ -100,7 +131,7 @@ export function LetterPanel({
             key={o.id}
             variant={target?.offerId === o.id ? 'default' : 'outline'}
             size="sm"
-            onClick={() => setTarget({ offerId: o.id, title: o.title })}
+            onClick={() => selectTarget({ offerId: o.id, title: o.title })}
             title={o.title}
           >
             Lettre : {o.title.length > 40 ? `${o.title.slice(0, 40)}…` : o.title}
@@ -126,10 +157,14 @@ export function LetterPanel({
             <div className="space-y-2">
               <Textarea value={content} onChange={(e) => setContent(e.target.value)} rows={18} />
               <div className="flex flex-wrap items-center gap-2">
-                <Button type="button" size="sm" variant="outline" onClick={() => copy(content)}>
-                  {copied ? 'Copié' : 'Copier'}
+                <Button type="button" size="sm" variant="outline" onClick={() => copy(content, 'result')}>
+                  {copied === 'result' ? 'Copié' : 'Copier'}
                 </Button>
-                <button type="button" className="text-xs underline" onClick={() => setShowPrompt((v) => !v)}>
+                <button
+                  type="button"
+                  className="text-xs underline disabled:opacity-50"
+                  onClick={() => setShowPrompt((v) => !v)}
+                >
                   {showPrompt ? 'Masquer ce qui a été envoyé' : 'Voir ce qui a été envoyé'}
                 </button>
                 <span className="text-xs text-muted-foreground">Généré avec {result.letter.model}</span>
@@ -158,22 +193,20 @@ export function LetterPanel({
                     {formatDate(l.createdAt)} · {l.offerTitle ?? 'spontanée'} · {l.model}
                   </span>
                   <span className="flex gap-2">
-                    <button type="button" className="underline" onClick={() => copy(l.content)}>
-                      Copier
+                    <button
+                      type="button"
+                      className="underline disabled:opacity-50"
+                      onClick={() => copy(l.content, l.id)}
+                    >
+                      {copied === l.id ? 'Copié' : 'Copier'}
                     </button>
                     <button
                       type="button"
-                      className="underline"
-                      disabled={pending}
-                      onClick={() =>
-                        start(async () => {
-                          const r = await deleteLetter(l.id, siren);
-                          if (r.ok) setHistory((h) => h.filter((x) => x.id !== l.id));
-                          else setError(r.error);
-                        })
-                      }
+                      className="underline disabled:opacity-50"
+                      disabled={deletingId !== null}
+                      onClick={() => remove(l.id)}
                     >
-                      Supprimer
+                      {deletingId === l.id ? 'Suppression…' : 'Supprimer'}
                     </button>
                   </span>
                 </div>

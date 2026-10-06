@@ -217,10 +217,14 @@ export default async function CompanyPage({ params }: { params: Promise<{ siren:
                 {activeOffers.map((o) => (
                   <li key={o.id} className="flex flex-wrap items-center gap-2">
                     {o.unseen && (
-                      <span
-                        className="inline-block size-2 rounded-full bg-orange-600"
-                        title="Première fois affichée"
-                      />
+                      <>
+                        <span
+                          aria-hidden="true"
+                          className="inline-block size-2 rounded-full bg-orange-600"
+                          title="Première fois affichée"
+                        />
+                        <span className="sr-only">Première fois affichée</span>
+                      </>
                     )}
                     {o.url ? <External href={o.url}>{o.title}</External> : o.title}
                     {o.isRecent && (
