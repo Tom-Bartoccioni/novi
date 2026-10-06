@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { StatusBadge, TechBadge } from '@/components/tech-badge';
+import { Badge } from '@/components/ui/badge';
 import type { CompanyListItem } from '@/lib/data';
 import { formatDistance, headcountLabel } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -41,6 +42,11 @@ export function CompanyList({
                 {c.topTechs.map((t) => (
                   <TechBadge key={t.slug} label={t.label} confidence={t.confidence} />
                 ))}
+                {c.recentOffers > 0 && (
+                  <Badge variant="outline" className="border-orange-600 text-orange-700">
+                    Nouveau ×{c.recentOffers}
+                  </Badge>
+                )}
                 {c.recruiting && <TechBadge label="Recrute" highlighted />}
                 <StatusBadge status={c.status} />
               </div>

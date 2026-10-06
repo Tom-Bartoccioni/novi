@@ -117,6 +117,14 @@ export function FiltersBar({
           />
           Recrute actuellement
         </label>
+        <label className="flex items-center gap-1">
+          <input
+            type="checkbox"
+            checked={filters.nouvelles}
+            onChange={(e) => update({ nouvelles: e.target.checked ? '1' : null })}
+          />
+          Nouvelles offres
+        </label>
       </div>
       <div className="flex flex-wrap gap-1">
         {headcountCodes.map((code) => (

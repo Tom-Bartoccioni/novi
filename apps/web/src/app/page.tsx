@@ -1,8 +1,15 @@
 import { loadIngestConfig } from '@novi/core';
+import Link from 'next/link';
 import { Suspense } from 'react';
 import { Explore } from '@/components/explore';
 import { FiltersBar } from '@/components/filters';
-import { availableTechs, countCompanies, listCompanies, parseFilters } from '@/lib/data';
+import {
+  availableTechs,
+  countCompanies,
+  countUnseenOffersInRadius,
+  listCompanies,
+  parseFilters,
+} from '@/lib/data';
 import { db, getProfile } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
@@ -17,6 +24,7 @@ export default async function Home({
   const companies = listCompanies(db(), profile, filters);
   const techs = availableTechs(db());
   const noData = countCompanies(db()) === 0;
+  const unseen = noData ? 0 : countUnseenOffersInRadius(db(), profile);
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -41,6 +49,14 @@ export default async function Home({
         </div>
       ) : (
         <>
+          {unseen > 0 && (
+            <p className="rounded-md border border-orange-600/40 bg-orange-50 px-3 py-2 text-sm dark:bg-orange-950/30">
+              {unseen} offre{unseen > 1 ? 's' : ''} jamais consultée{unseen > 1 ? 's' : ''} dans votre rayon.{' '}
+              <Link href="/?nouvelles=1" className="underline">
+                Voir les nouvelles offres
+              </Link>
+            </p>
+          )}
           <Suspense fallback={null}>
             <FiltersBar filters={filters} techs={techs} headcountCodes={loadIngestConfig().headcountRanges} />
           </Suspense>

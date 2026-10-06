@@ -101,9 +101,10 @@ export function CompanyMap({ home, companies, highlighted, onHover }: MapProps) 
       const dot = document.createElement('span');
       dot.style.cssText =
         'display:block;width:14px;height:14px;border-radius:9999px;border:2px solid white;box-shadow:0 0 0 1px rgba(0,0,0,.3);';
-      dot.style.background = c.recruiting ? '#16a34a' : '#2563eb';
+      dot.style.background = c.recentOffers > 0 ? '#ea580c' : c.recruiting ? '#16a34a' : '#2563eb';
+      if (c.recentOffers > 0) dot.style.boxShadow = '0 0 0 1px rgba(0,0,0,.3), 0 0 0 5px rgba(234,88,12,.25)';
       el.appendChild(dot);
-      el.title = `${c.name} · score ${c.score}`;
+      el.title = `${c.name} · score ${c.score}${c.recentOffers > 0 ? ` · ${c.recentOffers} nouvelle(s) offre(s)` : ''}`;
       el.addEventListener('mouseenter', () => onHover(c.siren));
       el.addEventListener('mouseleave', () => onHover(null));
       el.addEventListener('click', () => {
@@ -131,5 +132,20 @@ export function CompanyMap({ home, companies, highlighted, onHover }: MapProps) 
     for (const [siren, marker] of markers.current) setHighlighted(marker.getElement(), siren === highlighted);
   }, [highlighted]);
 
-  return <div ref={container} className="h-[420px] w-full rounded-lg border lg:h-[calc(100vh-8rem)]" />;
+  return (
+    <div className="space-y-1">
+      <div ref={container} className="h-[420px] w-full rounded-lg border lg:h-[calc(100vh-10rem)]" />
+      <p className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+        <span className="flex items-center gap-1">
+          <span className="inline-block size-2.5 rounded-full bg-[#ea580c]" /> nouvelles offres
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="inline-block size-2.5 rounded-full bg-[#16a34a]" /> recrute
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="inline-block size-2.5 rounded-full bg-[#2563eb]" /> autre
+        </span>
+      </p>
+    </div>
+  );
 }
