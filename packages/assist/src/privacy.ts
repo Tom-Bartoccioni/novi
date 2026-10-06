@@ -24,8 +24,8 @@ const MIN_VALUE_LENGTH = 3;
 const TOKEN_RE = /\[(NOM|PRENOM|EMAIL|TELEPHONE|ADRESSE|LIEN_\d+)\]/g;
 const PROTECTED_RE = /\[\[(NOM|PRENOM|EMAIL|TELEPHONE|ADRESSE|LIEN_\d+)\]\]/g;
 const EMAIL_RE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
-/** Numéros français : 0X ou +33 X, puis quatre paires de chiffres séparées ou non par espace, point ou tiret. */
-const PHONE_RE = /(?:\+33[\s.-]?[1-9]|0[1-9])(?:[\s.-]?\d{2}){4}(?!\d)/g;
+/** Numéros français, non collés à d'autres chiffres : 0X ou +33 X, puis quatre paires de chiffres séparées ou non par espace, point ou tiret. */
+const PHONE_RE = /(?<!\d)(?:\+33[\s.-]?[1-9]|0[1-9])(?:[\s.-]?\d{2}){4}(?!\d)/g;
 
 /**
  * Replie chaque unité de code sur sa lettre de base en minuscule, en gardant la même longueur que l'entrée,
@@ -89,6 +89,7 @@ export function anonymize(text: string, identity: Identity): string {
 }
 
 const PROTECT_MARK = '\u0000';
+const REMOVED_MARK = '';
 
 export function restore(text: string, identity: Identity): string {
   const values: Record<string, string> = {
@@ -102,7 +103,11 @@ export function restore(text: string, identity: Identity): string {
     values[`LIEN_${i + 1}`] = link.trim();
   });
   let out = text.replace(PROTECTED_RE, `${PROTECT_MARK}$1${PROTECT_MARK}`);
-  out = out.replace(TOKEN_RE, (_, key: string) => values[key] ?? '');
-  out = out.replace(new RegExp(`${PROTECT_MARK}([A-Z_0-9]+)${PROTECT_MARK}`, 'g'), '[$1]');
-  return out.replace(/ {2,}/g, ' ').replace(/ +\n/g, '\n');
+  // Un jeton sans valeur devient d'abord une marque, pour ne nettoyer que les espaces qui l'entourent.
+  out = out.replace(TOKEN_RE, (_, key: string) => values[key] || REMOVED_MARK);
+  // Entre deux espaces, la marque laisse un seul espace ; collée à autre chose, elle part avec son espace.
+  out = out.replace(new RegExp(`( ?)${REMOVED_MARK}( ?)`, 'g'), (_, before: string, after: string) =>
+    before && after ? ' ' : '',
+  );
+  return out.replace(new RegExp(`${PROTECT_MARK}([A-Z_0-9]+)${PROTECT_MARK}`, 'g'), '[$1]');
 }

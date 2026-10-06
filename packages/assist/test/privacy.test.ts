@@ -43,6 +43,10 @@ describe('anonymize', () => {
     });
     expect(out).toBe('Contact : [EMAIL] ou [TELEPHONE] ou [TELEPHONE]');
   });
+  it('does not mask a phone-like run glued to other digits', () => {
+    const out = anonymize('Réf 1006 12 34 56 78 et 06 12 34 56 78', { ...identity, phone: null });
+    expect(out).toBe('Réf 1006 12 34 56 78 et [TELEPHONE]');
+  });
   it('protects tokens already present in the source text', () => {
     const out = anonymize('Le texte contient [NOM] littéralement, signé Dupont', identity);
     expect(out).toBe('Le texte contient [[NOM]] littéralement, signé [NOM]');
@@ -70,6 +74,16 @@ describe('restore', () => {
       links: [],
     });
     expect(out).toBe('Signé Dupont ()');
+  });
+  it('drops an empty token at the start or end of a line with its space', () => {
+    expect(restore('Bien à vous,\n[PRENOM] [NOM]\n[NOM] [PRENOM]', { ...identity, firstName: null })).toBe(
+      'Bien à vous,\nDupont\nDupont',
+    );
+  });
+  it('keeps the spacing of the model output elsewhere', () => {
+    expect(restore('  - item\n  - [NOM]  [EMAIL]', identity)).toBe(
+      '  - item\n  - Dupont  jp.dupont@example.com',
+    );
   });
   it('restores protected literal tokens', () => {
     expect(restore('[[NOM]] et [NOM]', identity)).toBe('[NOM] et Dupont');
