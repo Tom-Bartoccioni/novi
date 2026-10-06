@@ -1,9 +1,22 @@
 'use server';
 
+import {
+  AssistError,
+  analyzeCv,
+  createGenerator,
+  detectIdentityHints,
+  extractPdfText,
+  MAX_PDF_BYTES,
+} from '@novi/assist';
+import { loadTechTags } from '@novi/core';
+import { type CoverLetterWithOffer, deleteCoverLetter } from '@novi/db';
 import { crawlCompany, geocode } from '@novi/pipeline';
 import { revalidatePath } from 'next/cache';
+import '@/lib/assist';
 import { db, getProfile } from '@/lib/db';
+import { generateLetterFor, type LetterRequest } from '@/lib/letters';
 import {
+  applyCv,
   applyLinkEmployer,
   applyNotes,
   applyProfile,
@@ -12,9 +25,11 @@ import {
   type ProfileInput,
 } from '@/lib/mutations';
 
-export type ActionResult = { ok: true; message?: string; website?: string } | { ok: false; error: string };
+type Failure = { ok: false; error: string };
 
-function fail(err: unknown): ActionResult {
+export type ActionResult = { ok: true; message?: string; website?: string } | Failure;
+
+function fail(err: unknown): Failure {
   return { ok: false, error: err instanceof Error ? err.message : String(err) };
 }
 
@@ -118,6 +133,81 @@ export async function updateProfile(input: ProfileInput): Promise<ActionResult> 
     revalidatePath('/');
     revalidatePath('/profil');
     return { ok: true, message: 'Profil enregistré' };
+  } catch (err) {
+    return fail(err);
+  }
+}
+
+export type UploadCvResult =
+  | {
+      ok: true;
+      filename: string;
+      pages: number;
+      uploadedAt: string;
+      text: string;
+      techs: { slug: string; label: string; inProfile: boolean }[];
+      nameCandidates: string[];
+      hints: { email?: string; phone?: string; links: string[] };
+    }
+  | Failure;
+
+export async function uploadCv(formData: FormData): Promise<UploadCvResult> {
+  try {
+    const file = formData.get('file');
+    if (!(file instanceof File) || file.size === 0) return { ok: false, error: 'Aucun fichier reçu' };
+    if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf'))
+      return { ok: false, error: new AssistError('cv_not_pdf').message };
+    if (file.size > MAX_PDF_BYTES) return { ok: false, error: new AssistError('cv_too_large').message };
+    const { text, pages } = await extractPdfText(new Uint8Array(await file.arrayBuffer()));
+    const tags = loadTechTags();
+    const hints = detectIdentityHints(text);
+    const profile = getProfile();
+    applyCv(db(), profile.id, { filename: file.name, text, pages }, hints);
+    const skills = new Set(profile.skills);
+    const labels = new Map(tags.map((t) => [t.slug, t.label]));
+    const techs = [...new Set(analyzeCv(text, tags).techs.map((d) => d.slug))].map((slug) => ({
+      slug,
+      label: labels.get(slug) ?? slug,
+      inProfile: skills.has(slug),
+    }));
+    revalidatePath('/profil');
+    return {
+      ok: true,
+      filename: file.name,
+      pages,
+      // Horodatage tel qu'enregistré par applyCv, pour que l'écran affiche la même valeur qu'après rechargement.
+      uploadedAt: getProfile().cvUploadedAt ?? new Date().toISOString(),
+      text,
+      techs,
+      nameCandidates: hints.nameCandidates,
+      hints: { email: hints.email, phone: hints.phone, links: hints.links },
+    };
+  } catch (err) {
+    return fail(err);
+  }
+}
+
+export type GenerateLetterResult = { ok: true; letter: CoverLetterWithOffer; sentPrompt: string } | Failure;
+
+export async function generateLetter(request: LetterRequest): Promise<GenerateLetterResult> {
+  try {
+    const generator = createGenerator();
+    if (!generator) return { ok: false, error: 'Aucun fournisseur LLM configuré (voir .env.example)' };
+    const outcome = await generateLetterFor(db(), getProfile(), request, generator);
+    revalidatePath(`/entreprises/${request.siren}`);
+    return { ok: true, ...outcome };
+  } catch (err) {
+    // LlmError, AssistError et les refus métier de generateLetterFor (pas de CV, pas de nom, entreprise
+    // ou offre inconnue) portent tous un message destiné à l'utilisateur : fail() le transmet tel quel.
+    return fail(err);
+  }
+}
+
+export async function deleteLetter(id: number, siren: string): Promise<ActionResult> {
+  try {
+    if (!deleteCoverLetter(db(), getProfile().id, id)) return { ok: false, error: 'Lettre introuvable' };
+    revalidatePath(`/entreprises/${siren}`);
+    return { ok: true };
   } catch (err) {
     return fail(err);
   }

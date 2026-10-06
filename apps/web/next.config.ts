@@ -6,6 +6,9 @@ const nextConfig: NextConfig = {
   // aucun des trois ne doit passer par le bundler.
   serverExternalPackages: ['better-sqlite3', 'unpdf', '@anthropic-ai/sdk'],
   agentRules: false,
+  // Les actions serveur refusent par défaut tout corps de plus d'1 Mo ; un CV peut peser jusqu'à 5 Mo
+  // (MAX_PDF_BYTES), plus l'enveloppe multipart.
+  experimental: { serverActions: { bodySizeLimit: '6mb' } },
 };
 
 export default nextConfig;
