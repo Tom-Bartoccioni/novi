@@ -17,6 +17,8 @@ export type LetterRequest = { siren: string; offerId?: string | null; instructio
 export type LetterOutcome = { letter: CoverLetterWithOffer; sentPrompt: string };
 
 const MAX_TECHS_IN_PROMPT = 15;
+const UNKNOWN_HEADCOUNTS = new Set(['NN', '00']);
+// Libellés lisibles des sources de détection, recopiés dans le prompt (« React (offre) »).
 const SOURCE_LABELS: Record<string, string> = {
   offre: 'offre',
   site: 'site',
@@ -41,6 +43,11 @@ function companyTechsForPrompt(db: Db, siren: string): LetterInput['company']['t
     }));
 }
 
+/** Ne garde que la ville d'une adresse géocodée (« 186 Avenue de Fabron 06200 Nice » → « Nice »). */
+export function townOf(homeLabel: string): string {
+  return homeLabel.replace(/^.*\b\d{5}\s+/, '').trim() || homeLabel.trim();
+}
+
 export async function generateLetterFor(
   db: Db,
   profile: Profile,
@@ -48,6 +55,12 @@ export async function generateLetterFor(
   generator: TextGenerator,
 ): Promise<LetterOutcome> {
   if (!profile.cvText) throw new Error('Importez votre CV dans le profil pour générer des lettres');
+  const identity = identityFromProfile(profile);
+  if (!identity.lastName) {
+    throw new Error(
+      'Renseignez votre nom dans le profil : sans lui, le CV ne peut pas être anonymisé avant envoi',
+    );
+  }
   const company = db.select().from(companies).where(eq(companies.siren, request.siren)).get();
   if (!company) throw new Error(`Entreprise inconnue : ${request.siren}`);
   const offer = request.offerId
@@ -58,15 +71,18 @@ export async function generateLetterFor(
         .get()
     : undefined;
   if (request.offerId && !offer) throw new Error('Offre inconnue pour cette entreprise');
-  const identity = identityFromProfile(profile);
+  // Tout texte libre susceptible de contenir une donnée personnelle passe par ici avant le prompt.
   const mask = (text: string | null | undefined) => (text ? anonymize(text, identity) : null);
   const input: LetterInput = {
-    profile: { homeLabel: profile.homeLabel, skills: profile.skills },
+    profile: { homeLabel: mask(townOf(profile.homeLabel)) ?? '', skills: profile.skills },
     cvText: anonymize(profile.cvText, identity),
     company: {
       name: company.name,
       city: company.city,
-      headcountLabel: company.headcountRange ? headcountLabel(company.headcountRange) : null,
+      headcountLabel:
+        company.headcountRange && !UNKNOWN_HEADCOUNTS.has(company.headcountRange)
+          ? headcountLabel(company.headcountRange)
+          : null,
       description: company.description,
       techs: companyTechsForPrompt(db, company.siren),
       careersUrl: company.careersUrl,

@@ -153,7 +153,7 @@ interface TextGenerator { readonly label: string; generate(input: GenerateInput,
 
 ```ts
 type LetterInput = {
-  profile: { homeLabel: string; skills: string[] };
+  profile: { homeLabel: string; skills: string[] }; // homeLabel : ville seulement, jamais l'adresse complète
   cvText: string;               // déjà anonymisé
   company: { name: string; city: string | null; headcountLabel: string | null; description: string | null;
              techs: { label: string; source: string }[]; careersUrl: string | null; website: string | null };
@@ -230,7 +230,7 @@ Toutes ces valeurs sont enregistrées par le bouton « Enregistrer le profil » 
   - sinon : bouton « Lettre spontanée », et sur chaque offre active « Lettre pour cette offre ».
 - Clic : panneau avec consigne facultative et « Générer ». Pendant la génération : bouton désactivé, « Génération… ». Résultat dans un `textarea` éditable, boutons « Copier », « Régénérer », mention « Généré avec {modèle} ». Lien « Voir ce qui a été envoyé » qui affiche le prompt anonymisé, conservé uniquement dans l'état du composant.
 - Volet replié « Lettres générées (N) » avec les précédentes, triées par date décroissante, chacune avec « Copier » et « Supprimer ».
-- Action serveur `generateLetter({ siren, offerId?, instruction? })` : charge profil, CV, entreprise, offre ; construit l'identité ; anonymise CV, consigne et offre (le texte d'une offre peut contenir le nom du candidat si c'est une offre déjà échangée, improbable mais sans coût) ; appelle le générateur avec un délai de 60 s ; restaure ; insère dans `cover_letters` ; retourne `{ ok, letter, model, sentPrompt }`. En cas d'erreur, retourne `{ ok: false, error }` sans rien écrire ; pour `rate_limited`, le message inclut « réessayez dans X secondes » si connu.
+- Action serveur `generateLetter({ siren, offerId?, instruction? })` : charge profil, CV, entreprise, offre ; construit l'identité, avec refus si le nom n'est pas renseigné dans le profil (sans lui, le CV ne peut pas être anonymisé) ; anonymise CV, consigne et offre (le texte d'une offre peut contenir le nom du candidat si c'est une offre déjà échangée, improbable mais sans coût) ; appelle le générateur avec un délai de 60 s ; restaure ; insère dans `cover_letters` ; retourne `{ ok, letter, model, sentPrompt }`. En cas d'erreur, retourne `{ ok: false, error }` sans rien écrire ; pour `rate_limited`, le message inclut « réessayez dans X secondes » si connu.
 - Action `deleteLetter(id)`.
 
 ### 7.3 Exploration (`/`)
