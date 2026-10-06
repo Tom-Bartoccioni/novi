@@ -47,6 +47,26 @@ describe('anonymize', () => {
     const out = anonymize('Réf 1006 12 34 56 78 et 06 12 34 56 78', { ...identity, phone: null });
     expect(out).toBe('Réf 1006 12 34 56 78 et [TELEPHONE]');
   });
+  it('catches international phone prefixes', () => {
+    const out = anonymize('Tél. +33 (0)6 12 34 56 78 ou 0033 6 12 34 56 78', { ...identity, phone: null });
+    expect(out).toBe('Tél. [TELEPHONE] ou [TELEPHONE]');
+  });
+  it('matches decomposed (NFD) text and values', () => {
+    const nfdText = 'Jérôme Dupont'.normalize('NFD');
+    expect(anonymize(nfdText, { ...identity, firstName: 'Jérôme' })).toBe('[PRENOM] [NOM]');
+    const nfdValue = 'Jérôme'.normalize('NFD');
+    expect(anonymize('Jérôme Dupont', { ...identity, firstName: nfdValue })).toBe('[PRENOM] [NOM]');
+  });
+  it('masks a value written between brackets, brackets included', () => {
+    expect(anonymize('(Dupont) et [Dupont]', identity)).not.toContain('Dupont');
+    const out = anonymize('voir [Dupont] ici', identity);
+    expect(out).toBe('voir [NOM] ici');
+    // Les crochets sont perdus à la restauration, limite assumée.
+    expect(restore(out, identity)).toBe('voir Dupont ici');
+  });
+  it('matches a declared value whose spaces became a line break', () => {
+    expect(anonymize('12 rue des Lilas,\n06000 Nice', identity)).toBe('[ADRESSE]');
+  });
   it('protects tokens already present in the source text', () => {
     const out = anonymize('Le texte contient [NOM] littéralement, signé Dupont', identity);
     expect(out).toBe('Le texte contient [[NOM]] littéralement, signé [NOM]');
@@ -79,6 +99,9 @@ describe('restore', () => {
     expect(restore('Bien à vous,\n[PRENOM] [NOM]\n[NOM] [PRENOM]', { ...identity, firstName: null })).toBe(
       'Bien à vous,\nDupont\nDupont',
     );
+  });
+  it('treats tabs like spaces around an empty token', () => {
+    expect(restore('Nom :\t[PRENOM]\t[NOM]', { ...identity, firstName: null })).toBe('Nom :\tDupont');
   });
   it('keeps the spacing of the model output elsewhere', () => {
     expect(restore('  - item\n  - [NOM]  [EMAIL]', identity)).toBe(
