@@ -68,7 +68,8 @@ export function createOpenAiCompatibleGenerator(opts: OpenAiCompatibleOptions): 
   const fetchImpl = opts.fetchImpl ?? fetch;
   const url = `${opts.baseUrl.replace(/\/+$/, '')}/chat/completions`;
   const timeoutMs = opts.timeoutMs ?? LLM_TIMEOUT_MS;
-  const timeoutMessage = `Délai dépassé (${Math.max(1, Math.round(timeoutMs / 1000))} s) en attendant le fournisseur LLM`;
+  const seconds = Math.max(1, Math.round(timeoutMs / 1000));
+  const timeoutMessage = `Délai dépassé (${seconds} s) en attendant le fournisseur LLM`;
 
   return {
     label: `openai-compatible/${opts.model}`,
