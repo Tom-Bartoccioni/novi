@@ -115,19 +115,17 @@ function nullable(value: string | undefined): string | null {
 }
 
 function normalizeLinks(links: string[]): string[] {
-  return links
+  const normalized = links
     .map((l) => l.trim())
     .filter(Boolean)
     .map((l) => {
-      const withScheme = /^https?:\/\//i.test(l) ? l : `https://${l}`;
       try {
-        const url = new URL(withScheme);
-        if (!/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(url.hostname)) throw new Error();
-        return withScheme;
+        return normalizeUrl(l);
       } catch {
         throw new Error(`Lien invalide : ${l}`);
       }
     });
+  return [...new Set(normalized)];
 }
 
 export function applyProfile(database: Db, profileId: number, input: ProfileInput): void {
