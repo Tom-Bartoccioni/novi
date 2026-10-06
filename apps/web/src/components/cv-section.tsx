@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import { type UploadCvResult, uploadCv } from '@/app/actions';
 import { Button } from '@/components/ui/button';
 import { formatDate } from '@/lib/format';
@@ -12,12 +12,18 @@ export type CvTech = { slug: string; label: string; inProfile: boolean };
 const MAX_CV_BYTES = 5 * 1024 * 1024;
 
 export function CvSection({
+  busy,
+  onPendingChange,
   cv,
   techs,
   skills,
   onAddSkills,
   onImported,
 }: {
+  /** Le formulaire parent enregistre : l'import attend. */
+  busy: boolean;
+  /** Signale au parent qu'un import est en cours, pour bloquer l'enregistrement. */
+  onPendingChange: (pending: boolean) => void;
   cv: CvInfo;
   techs: CvTech[];
   skills: string[];
@@ -26,6 +32,7 @@ export function CvSection({
 }) {
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  useEffect(() => onPendingChange(pending), [pending, onPendingChange]);
   const fileInput = useRef<HTMLInputElement>(null);
   const inProfile = techs.filter((t) => skills.includes(t.slug));
   const missing = techs.filter((t) => !skills.includes(t.slug));
@@ -44,8 +51,9 @@ export function CvSection({
         <Button
           type="button"
           variant="outline"
-          disabled={pending}
+          disabled={pending || busy}
           onClick={() => {
+            setError(null);
             const file = fileInput.current?.files?.[0];
             if (!file) {
               setError('Choisissez un fichier PDF');
@@ -59,10 +67,8 @@ export function CvSection({
             data.set('file', file);
             start(async () => {
               const r = await uploadCv(data);
-              if (r.ok) {
-                setError(null);
-                onImported(r);
-              } else setError(r.error);
+              if (r.ok) onImported(r);
+              else setError(r.error);
             });
           }}
         >

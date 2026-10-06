@@ -2,17 +2,16 @@
 
 import {
   AssistError,
-  analyzeCv,
   createGenerator,
   detectIdentityHints,
   extractPdfText,
   MAX_PDF_BYTES,
 } from '@novi/assist';
-import { loadTechTags } from '@novi/core';
 import { type CoverLetterWithOffer, deleteCoverLetter } from '@novi/db';
 import { crawlCompany, geocode } from '@novi/pipeline';
 import { revalidatePath } from 'next/cache';
 import '@/lib/assist';
+import { cvTechsFor } from '@/lib/cv';
 import { db, getProfile } from '@/lib/db';
 import { generateLetterFor, type LetterRequest } from '@/lib/letters';
 import {
@@ -159,17 +158,10 @@ export async function uploadCv(formData: FormData): Promise<UploadCvResult> {
       return { ok: false, error: new AssistError('cv_not_pdf').message };
     if (file.size > MAX_PDF_BYTES) return { ok: false, error: new AssistError('cv_too_large').message };
     const { text, pages } = await extractPdfText(new Uint8Array(await file.arrayBuffer()));
-    const tags = loadTechTags();
     const hints = detectIdentityHints(text);
     const profile = getProfile();
     applyCv(db(), profile.id, { filename: file.name, text, pages }, hints);
-    const skills = new Set(profile.skills);
-    const labels = new Map(tags.map((t) => [t.slug, t.label]));
-    const techs = [...new Set(analyzeCv(text, tags).techs.map((d) => d.slug))].map((slug) => ({
-      slug,
-      label: labels.get(slug) ?? slug,
-      inProfile: skills.has(slug),
-    }));
+    const techs = cvTechsFor(text, profile.skills);
     revalidatePath('/profil');
     return {
       ok: true,

@@ -1,23 +1,15 @@
-import { analyzeCv, detectIdentityHints } from '@novi/assist';
+import { detectIdentityHints } from '@novi/assist';
 import { loadTechTags } from '@novi/core';
 import { ProfileForm } from '@/components/profile-form';
+import { cvTechsFor } from '@/lib/cv';
 import { getProfile } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
 export default function ProfilePage() {
   const p = getProfile();
-  const allTags = loadTechTags();
-  const tags = allTags.map((t) => ({ slug: t.slug, label: t.label, category: t.category }));
-  const labels = new Map(allTags.map((t) => [t.slug, t.label]));
-  const skills = new Set(p.skills);
-  const cvTechs = p.cvText
-    ? [...new Set(analyzeCv(p.cvText, allTags).techs.map((d) => d.slug))].map((slug) => ({
-        slug,
-        label: labels.get(slug) ?? slug,
-        inProfile: skills.has(slug),
-      }))
-    : [];
+  const tags = loadTechTags().map((t) => ({ slug: t.slug, label: t.label, category: t.category }));
+  const cvTechs = p.cvText ? cvTechsFor(p.cvText, p.skills) : [];
   return (
     <div className="max-w-3xl space-y-4">
       <h1 className="text-xl font-semibold">Profil</h1>

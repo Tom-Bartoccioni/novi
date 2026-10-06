@@ -39,3 +39,17 @@ export function formatEuros(n: number | null | undefined): string {
     maximumFractionDigits: 0,
   }).format(n);
 }
+
+const isAllCaps = (word: string) =>
+  word.toLocaleUpperCase('fr') === word && word.toLocaleLowerCase('fr') !== word;
+
+/**
+ * Découpe un nom lu dans un CV en prénom et nom. Les mots en capitales placés en tête
+ * (« DUPONT Jean », « LE GALL Yann ») forment le nom ; sinon le premier mot est le prénom.
+ */
+export function splitFullName(full: string): { firstName: string; lastName: string } {
+  const words = full.trim().split(/\s+/).filter(Boolean);
+  const lead = words.findIndex((w) => !isAllCaps(w));
+  if (lead > 0) return { firstName: words.slice(lead).join(' '), lastName: words.slice(0, lead).join(' ') };
+  return { firstName: words[0] ?? '', lastName: words.slice(1).join(' ') };
+}

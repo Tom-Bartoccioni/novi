@@ -7,6 +7,7 @@ import { type CvInfo, CvSection, type CvTech } from '@/components/cv-section';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { splitFullName } from '@/lib/format';
 
 type Tag = { slug: string; label: string; category: string };
 type Initial = {
@@ -67,6 +68,7 @@ export function ProfileForm({ initial, tags }: { initial: Initial; tags: Tag[] }
     setIdentity((prev) => ({ ...prev, [key]: value }));
   const [filter, setFilter] = useState('');
   const [pending, start] = useTransition();
+  const [importing, setImporting] = useState(false);
   const [message, setMessage] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
 
   const grouped = useMemo(() => {
@@ -104,6 +106,7 @@ export function ProfileForm({ initial, tags }: { initial: Initial; tags: Tag[] }
       className="space-y-6"
       onSubmit={(e) => {
         e.preventDefault();
+        if (importing) return;
         start(async () => {
           const point = addressDirty ? await locate() : home;
           if (!point) return;
@@ -130,6 +133,8 @@ export function ProfileForm({ initial, tags }: { initial: Initial; tags: Tag[] }
       }}
     >
       <CvSection
+        busy={pending}
+        onPendingChange={setImporting}
         cv={cv}
         techs={cvTechs}
         skills={skills}
@@ -137,15 +142,21 @@ export function ProfileForm({ initial, tags }: { initial: Initial; tags: Tag[] }
         onImported={(r) => {
           setCv({ filename: r.filename, pages: r.pages, uploadedAt: r.uploadedAt, text: r.text });
           setCvTechs(r.techs);
-          setNameCandidates(r.nameCandidates);
-          // `applyCv` a rempli côté serveur les champs vides : on reflète, sinon l'enregistrement les écraserait.
+          // Comme la page : les candidats ne sont proposés que tant que le nom est vide.
+          setNameCandidates(identity.lastName.trim() ? [] : r.nameCandidates);
+          // `applyCv` a rempli côté serveur les champs d'identité vides : on les reflète ici,
+          // sinon « Enregistrer le profil » les écraserait avec des valeurs vides.
           setIdentity((prev) => ({
             ...prev,
             email: prev.email || r.hints.email || '',
             phone: prev.phone || r.hints.phone || '',
             links: prev.links || r.hints.links.join('\n'),
           }));
-          setMessage({ kind: 'ok', text: `CV importé : ${r.techs.length} technos détectées` });
+          const n = r.techs.length;
+          setMessage({
+            kind: 'ok',
+            text: `CV importé : ${n} techno${n > 1 ? 's' : ''} détectée${n > 1 ? 's' : ''}`,
+          });
         }}
       />
 
@@ -158,15 +169,14 @@ export function ProfileForm({ initial, tags }: { initial: Initial; tags: Tag[] }
         {nameCandidates.length > 0 && (
           <div className="flex flex-wrap items-center gap-1 text-sm">
             <span className="text-muted-foreground">Nom lu dans le CV :</span>
-            {nameCandidates.map((c) => (
+            {[...new Set(nameCandidates)].map((c) => (
               <button
                 type="button"
                 key={c}
                 className="rounded-full border px-2 py-0.5"
                 onClick={() => {
-                  const [first, ...rest] = c.split(/\s+/);
-                  setField('firstName', first ?? '');
-                  setField('lastName', rest.join(' '));
+                  const { firstName, lastName } = splitFullName(c);
+                  setIdentity((prev) => ({ ...prev, firstName, lastName }));
                 }}
               >
                 Utiliser : {c}
@@ -332,7 +342,7 @@ export function ProfileForm({ initial, tags }: { initial: Initial; tags: Tag[] }
       </section>
 
       <div className="flex items-center gap-3">
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" disabled={pending || importing}>
           Enregistrer le profil
         </Button>
         {message && (
