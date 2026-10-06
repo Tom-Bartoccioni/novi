@@ -12,6 +12,25 @@ export function formatDate(iso: string | null | undefined): string {
     : d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
+/** Date et heure courtes, à l'heure locale : « 06/10/2026 08:01 ». */
+export function formatDateTime(iso: string | null | undefined): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime())
+    ? iso
+    : d.toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
+}
+
+/** « il y a N min » sous une heure, « il y a N h » sous 48 h, sinon la date (dates futures comprises). */
+export function formatRelativeHours(iso: string | null | undefined, now: Date = new Date()): string {
+  const t = iso ? Date.parse(iso) : Number.NaN;
+  const minutes = Math.floor((now.getTime() - t) / 60_000);
+  if (Number.isNaN(minutes) || minutes < 0) return formatDate(iso);
+  if (minutes < 60) return `il y a ${minutes} min`;
+  if (minutes < 48 * 60) return `il y a ${Math.floor(minutes / 60)} h`;
+  return formatDate(iso);
+}
+
 export function headcountLabel(code: string | null | undefined): string {
   return code ? (HEADCOUNT_LABELS[code] ?? code) : 'Effectif inconnu';
 }

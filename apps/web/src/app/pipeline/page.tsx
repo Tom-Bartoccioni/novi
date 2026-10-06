@@ -1,6 +1,6 @@
 import { pipelineOverview, type RunWithStatus } from '@/lib/data';
 import { db } from '@/lib/db';
-import { formatDate } from '@/lib/format';
+import { formatDate, formatDateTime, formatRelativeHours } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,9 +42,10 @@ export default function PipelinePage() {
       <div className="rounded-lg border p-3 text-sm">
         {lastRefresh ? (
           <p>
-            Dernier refresh : {formatDate(lastRefresh.finishedAt)}
+            Dernier refresh : {formatRelativeHours(lastRefresh.finishedAt)} (le{' '}
+            {formatDateTime(lastRefresh.finishedAt)})
             {lastRefresh.stats
-              ? ` (${lastRefresh.stats.newOffers ?? 0} nouvelle(s) offre(s), ${lastRefresh.stats.linked ?? 0} rattachée(s))`
+              ? ` : ${lastRefresh.stats.newOffers ?? 0} nouvelle(s) offre(s), ${lastRefresh.stats.linked ?? 0} rattachée(s)`
               : ''}
             {refreshStale && (
               <span className="ml-2 text-destructive">

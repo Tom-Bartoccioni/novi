@@ -12,6 +12,16 @@ const WORKER_URL = '/maplibre/maplibre-gl-worker.mjs';
 maplibregl.setWorkerUrl(WORKER_URL);
 const ON_CLASS = 'novi-marker--on';
 
+/** Couleurs des marqueurs, partagées avec la légende (hexadécimal à 6 chiffres : le halo y ajoute un alpha). */
+export const COLOR_RECENT = '#ea580c';
+export const COLOR_RECRUITING = '#16a34a';
+export const COLOR_DEFAULT = '#2563eb';
+const LEGEND = [
+  [COLOR_RECENT, 'nouvelles offres'],
+  [COLOR_RECRUITING, 'recrute'],
+  [COLOR_DEFAULT, 'autre'],
+] as const;
+
 export type MapProps = {
   home: { latitude: number; longitude: number; radiusKm: number };
   companies: CompanyListItem[];
@@ -101,10 +111,12 @@ export function CompanyMap({ home, companies, highlighted, onHover }: MapProps) 
       const dot = document.createElement('span');
       dot.style.cssText =
         'display:block;width:14px;height:14px;border-radius:9999px;border:2px solid white;box-shadow:0 0 0 1px rgba(0,0,0,.3);';
-      dot.style.background = c.recentOffers > 0 ? '#ea580c' : c.recruiting ? '#16a34a' : '#2563eb';
-      if (c.recentOffers > 0) dot.style.boxShadow = '0 0 0 1px rgba(0,0,0,.3), 0 0 0 5px rgba(234,88,12,.25)';
+      const fresh = c.recentOffers > 0;
+      dot.style.background = fresh ? COLOR_RECENT : c.recruiting ? COLOR_RECRUITING : COLOR_DEFAULT;
+      // Halo : même orange, alpha 0x40 (25 %).
+      if (fresh) dot.style.boxShadow = `0 0 0 1px rgba(0,0,0,.3), 0 0 0 5px ${COLOR_RECENT}40`;
       el.appendChild(dot);
-      el.title = `${c.name} · score ${c.score}${c.recentOffers > 0 ? ` · ${c.recentOffers} nouvelle(s) offre(s)` : ''}`;
+      el.title = `${c.name} · score ${c.score}${fresh ? ` · ${c.recentOffers} nouvelle(s) offre(s)` : ''}`;
       el.addEventListener('mouseenter', () => onHover(c.siren));
       el.addEventListener('mouseleave', () => onHover(null));
       el.addEventListener('click', () => {
@@ -136,15 +148,11 @@ export function CompanyMap({ home, companies, highlighted, onHover }: MapProps) 
     <div className="space-y-1">
       <div ref={container} className="h-[420px] w-full rounded-lg border lg:h-[calc(100vh-10rem)]" />
       <p className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1">
-          <span className="inline-block size-2.5 rounded-full bg-[#ea580c]" /> nouvelles offres
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="inline-block size-2.5 rounded-full bg-[#16a34a]" /> recrute
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="inline-block size-2.5 rounded-full bg-[#2563eb]" /> autre
-        </span>
+        {LEGEND.map(([color, label]) => (
+          <span key={label} className="flex items-center gap-1">
+            <span className="inline-block size-2.5 rounded-full" style={{ background: color }} /> {label}
+          </span>
+        ))}
       </p>
     </div>
   );

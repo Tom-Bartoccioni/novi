@@ -243,7 +243,7 @@ Toutes ces valeurs sont enregistrées par le bouton « Enregistrer le profil » 
 
 ### 7.4 Pipeline (`/pipeline`)
 
-Ligne « Dernier refresh : il y a 3 h (12 offres, 2 nouvelles) » d'après le dernier `crawl_runs` de nom `refresh`. Si le dernier refresh date de plus de 12 h, avertissement « Le rafraîchissement automatique semble arrêté » avec rappel de la commande d'installation.
+Ligne « Dernier refresh : il y a 3 h (le JJ/MM/AAAA HH:MM) : N nouvelles offres, M rattachées » d'après le dernier `crawl_runs` de nom `refresh`. Si le dernier refresh date de plus de 12 h, avertissement « Le rafraîchissement automatique semble arrêté » avec rappel de la commande d'installation.
 
 ## 8. Gestion des erreurs
 
