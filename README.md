@@ -13,6 +13,7 @@ _Aperçu accéléré 2×. Version complète (1 min, 1080p) : [à regarder dans l
 - Node 22 ou plus récent, pnpm 9.
 - Un compte développeur gratuit sur https://francetravail.io avec l'API « Offres d'emploi » activée (l'ancienne « Offres d'emploi v2 », renommée sur le portail) (facultatif : sans lui, les étapes offres sont ignorées).
 - Un token GitHub personnel sans permission particulière (facultatif : passe de 60 à 5000 requêtes par heure).
+- Facultatif : une clé d'un fournisseur LLM à palier gratuit (Google AI Studio pour Gemini, Groq ou Mistral) pour générer des lettres de motivation ; voir `.env.example`.
 - Aucun compilateur C++ : `better-sqlite3` est listé dans `pnpm.neverBuiltDependencies` du `package.json` racine pour que pnpm utilise ses binaires précompilés au lieu de tenter une compilation qui échouerait sans Visual Studio.
 
 ## Mise en route
@@ -37,6 +38,7 @@ pnpm dev                  # puis http://localhost:3000
 | `pnpm pipeline enrich github` | Langages des dépôts publics |
 | `pnpm pipeline signals` | Recalcule les signaux dérivés |
 | `pnpm pipeline run all -d 06` | Enchaîne tout |
+| `pnpm pipeline refresh -d 06` | Offres France Travail, rattachement, signaux, puis résumé « N nouvelles offres ». Conçu pour la planification. |
 
 Options par commande :
 
@@ -48,8 +50,23 @@ Options par commande :
 | `crawl websites` | `--limit N`, `--siren X`, `--concurrency N` (défaut 5), `--force` : réanalyse même si le site a été crawlé il y a moins de 30 jours |
 | `enrich github` | `--limit N`, `--siren X` |
 | `run all` | `-d, --departement <code>` (défaut `06`) ; une étape en échec n'arrête pas les suivantes et le code de sortie vaut 1 |
+| `refresh` | `-d, --departement <code>` (défaut `06`) ; code de sortie 1 sans identifiants France Travail ou si une étape échoue |
 
 Chaque run est journalisé dans la table `crawl_runs`.
+
+## Rafraîchissement automatique
+
+Sous Windows, une tâche planifiée lance `pnpm pipeline refresh` toutes les 6 heures (modifiable) :
+
+```powershell
+pwsh scripts/install-refresh-task.ps1            # toutes les 6 h
+pwsh scripts/install-refresh-task.ps1 -IntervalHours 3
+pwsh scripts/uninstall-refresh-task.ps1
+```
+
+Le journal est dans `data/logs/refresh.log`. La page `/pipeline` affiche la date du dernier refresh et prévient s'il date de plus de 12 h.
+
+Sous macOS ou Linux, l'équivalent `cron` (après `mkdir -p data/logs`) : `0 */6 * * * cd /chemin/vers/Novi && pnpm pipeline refresh -d 06 >> data/logs/refresh.log 2>&1`.
 
 ## Développement
 
@@ -64,6 +81,7 @@ pnpm db:generate  # après modification de packages/db/src/schema.ts
 
 - `packages/core` : fonctions pures (normalisation, détection de technos, scoring) et configuration JSON.
 - `packages/db` : schéma Drizzle, client SQLite, migrations. Le calcul de rayon est isolé dans `src/geo.ts` en vue de PostGIS.
+- `packages/assist` : extraction du CV (PDF), anonymisation réversible, adaptateurs LLM et prompt de lettre. Aucune dépendance à la base.
 - `packages/pipeline` : ligne de commande d'ingestion.
 - `apps/web` : application Next.js. `pnpm dev` puis http://localhost:3000. Le worker de MapLibre est copié dans `public/maplibre/` (ignoré par git) par `scripts/copy-maplibre-worker.mjs` avant `dev` et `build`, parce que Turbopack ne sait pas le résoudre depuis le chunk.
   - `/` exploration : liste et carte, filtres dans l'URL.
