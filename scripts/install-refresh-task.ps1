@@ -36,7 +36,8 @@ $Encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($Inner))
 
 $Action = New-ScheduledTaskAction -Execute $pwsh -Argument "-NoProfile -NonInteractive -WindowStyle Hidden -EncodedCommand $Encoded" -WorkingDirectory $RepoRoot
 $Trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(2) -RepetitionInterval (New-TimeSpan -Hours $IntervalHours)
-$Settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -ExecutionTimeLimit (New-TimeSpan -Hours 1) -MultipleInstances IgnoreNew
+# Sur portable : le refresh est léger (quelques requêtes HTTP), on l'autorise donc sur batterie.
+$Settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Hours 1) -MultipleInstances IgnoreNew
 
 Register-ScheduledTask -TaskName $TaskName -Action $Action -Trigger $Trigger -Settings $Settings -Description "Novi : rafraîchissement des offres France Travail toutes les $IntervalHours h" -Force | Out-Null
 

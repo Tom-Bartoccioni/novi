@@ -77,13 +77,6 @@ function tokenSpans(text: string): Array<[number, number]> {
   return spans;
 }
 
-/**
- * Remplace, dans `text` (en NFC), chaque occurrence de `value` par `token`. Casse et accents sont ignorés,
- * toute suite de blancs de la valeur accepte n'importe quelle suite de blancs, et l'occurrence doit être
- * bornée par des non-lettres. Une occurrence située dans un jeton existant est ignorée. Une occurrence entre
- * crochets, « [Dupont] », est remplacée crochets compris pour ne pas fabriquer « [[NOM]] », que `restore`
- * lirait comme un jeton littéral : les crochets sont donc perdus à la restauration.
- */
 /** Lien sans schéma, sans « www. » ni « / » final, la casse étant conservée : forme commune au masquage et à la déduplication. */
 export function linkCore(url: string): string {
   return url
@@ -99,6 +92,13 @@ function effectiveValue(value: string, isLink: boolean): string {
   return isLink ? linkCore(v) : v;
 }
 
+/**
+ * Remplace, dans `text` (en NFC), chaque occurrence de `value` par `token`. Casse et accents sont ignorés,
+ * toute suite de blancs de la valeur accepte n'importe quelle suite de blancs, et l'occurrence doit être
+ * bornée par des non-lettres. Une occurrence située dans un jeton existant est ignorée. Une occurrence entre
+ * crochets, « [Dupont] », est remplacée crochets compris pour ne pas fabriquer « [[NOM]] », que `restore`
+ * lirait comme un jeton littéral : les crochets sont donc perdus à la restauration.
+ */
 function replaceValue(text: string, value: string, token: string, isLink = false): string {
   const needle = fold(effectiveValue(value, isLink));
   if (needle.length < MIN_VALUE_LENGTH) return text;
