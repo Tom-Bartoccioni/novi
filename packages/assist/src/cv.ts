@@ -1,5 +1,5 @@
 import { type Detection, detectTechs, stripAccents, type TechTag } from '@novi/core';
-import { EMAIL_PATTERN, PHONE_PATTERN } from './privacy';
+import { EMAIL_PATTERN, linkCore, PHONE_PATTERN } from './privacy';
 
 export const CV_TECH_CONFIDENCE = 0.9;
 
@@ -68,13 +68,9 @@ const HEADING_WORDS = new Set([
 const NAME_PARTICLES = new Set(['de', 'du', 'des', "d'", 'd’', 'la', 'le', 'van', 'von', 'der', 'di', 'da']);
 const NAME_WORD_RE = /^\p{Lu}[\p{L}'’-]*$/u;
 
-/** Clé de comparaison d'un lien : hôte en minuscule, sans schéma, sans « www. » ni « / » final. */
+/** Clé de comparaison d'un lien : forme commune au masquage (`linkCore`), en minuscule. */
 function linkKey(link: string): string {
-  return link
-    .toLowerCase()
-    .replace(/^https?:\/\//, '')
-    .replace(/^www\./, '')
-    .replace(/\/+$/, '');
+  return linkCore(link).toLowerCase();
 }
 
 function isNameWord(word: string, index: number, count: number): boolean {

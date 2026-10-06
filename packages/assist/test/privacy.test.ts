@@ -12,6 +12,12 @@ const identity: Identity = {
 };
 
 describe('anonymize', () => {
+  it('does not let a personal-site link eat the domain of an e-mail', () => {
+    const id: Identity = { email: 'jp@jpdupont.fr', links: ['https://jpdupont.fr/'], revealFirstName: false };
+    const out = anonymize('jp@jpdupont.fr | https://jpdupont.fr/', id);
+    expect(out).toBe('[EMAIL] | [LIEN_1]');
+    expect(restore(out, id)).toBe('jp@jpdupont.fr | https://jpdupont.fr/');
+  });
   it('masks a link whatever its scheme, www prefix or trailing slash', () => {
     const id: Identity = { links: ['https://github.com/jpdupont'], revealFirstName: false };
     expect(anonymize('profil : github.com/jpdupont et www.github.com/jpdupont/', id)).toBe(

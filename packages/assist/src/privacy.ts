@@ -84,14 +84,23 @@ function tokenSpans(text: string): Array<[number, number]> {
  * crochets, « [Dupont] », est remplacée crochets compris pour ne pas fabriquer « [[NOM]] », que `restore`
  * lirait comme un jeton littéral : les crochets sont donc perdus à la restauration.
  */
+/** Lien sans schéma, sans « www. » ni « / » final, la casse étant conservée : forme commune au masquage et à la déduplication. */
+export function linkCore(url: string): string {
+  return url
+    .trim()
+    .replace(/^https?:\/\//i, '')
+    .replace(/^www\./i, '')
+    .replace(/\/+$/, '');
+}
+
+/** Valeur effectivement cherchée dans le texte, en NFC. */
+function effectiveValue(value: string, isLink: boolean): string {
+  const v = value.normalize('NFC').trim();
+  return isLink ? linkCore(v) : v;
+}
+
 function replaceValue(text: string, value: string, token: string, isLink = false): string {
-  let needle = fold(value.normalize('NFC').trim());
-  if (isLink) {
-    needle = needle
-      .replace(/^https?:\/\//, '')
-      .replace(/^www\./, '')
-      .replace(/\/+$/, '');
-  }
+  const needle = fold(effectiveValue(value, isLink));
   if (needle.length < MIN_VALUE_LENGTH) return text;
   let pattern = escapeRegex(needle).replace(/\s+/g, '\\s+');
   // Un lien est reconnu avec ou sans schéma, avec ou sans « www. » et avec ou sans « / » final.
@@ -130,7 +139,10 @@ function replacements(identity: Identity): Replacement[] {
     push(link, linkToken(i), true);
   });
   // Les valeurs longues d'abord : « Jean-Pierre » part avant « Jean ».
-  return list.sort((a, b) => b.value.length - a.value.length);
+  return list.sort(
+    (a, b) =>
+      effectiveValue(b.value, b.isLink ?? false).length - effectiveValue(a.value, a.isLink ?? false).length,
+  );
 }
 
 /**
