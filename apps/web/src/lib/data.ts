@@ -1,6 +1,7 @@
 import {
   distanceKm as computeDistanceKm,
   detectTechs,
+  isRecentOffer,
   loadTechTags,
   type ScoreResult,
   scoreCompany,
@@ -10,6 +11,7 @@ import {
 import {
   type Company,
   type CompanyStatus,
+  type CoverLetterWithOffer,
   type CrawlRun,
   companies,
   companiesWithinRadius,
@@ -18,7 +20,10 @@ import {
   crawlRuns,
   type Db,
   jobOffers,
+  listCoverLetters,
   type Profile,
+  recordOfferViews,
+  seenOfferIds,
   signals,
   techTags,
 } from '@novi/db';
@@ -32,6 +37,7 @@ export type Filters = {
   techs: string[];
   headcount: string[];
   recruiting: boolean;
+  nouvelles: boolean;
   status: CompanyStatus | null;
   sort: Sort;
   q: string;
@@ -59,6 +65,7 @@ export function parseFilters(params: SearchParams): Filters {
     techs: list(params.techs),
     headcount: list(params.headcount),
     recruiting: first(params.recruiting) === '1',
+    nouvelles: first(params.nouvelles) === '1',
     status: STATUSES.includes(status) ? status : null,
     sort: SORTS.includes(sort) ? sort : 'score',
     q: first(params.q).trim(),
@@ -77,6 +84,8 @@ export type CompanyListItem = {
   headcountRange: string | null;
   topTechs: TechSummary[];
   recruiting: boolean;
+  recentOffers: number;
+  unseenOffers: number;
   score: number;
   status: CompanyStatus;
 };
@@ -100,7 +109,7 @@ function bestTechs(rows: { tagSlug: string; confidence: number }[], preferred: s
     );
 }
 
-type ScoredOffer = { techSlugs: string[] };
+type ScoredOffer = { id: string; techSlugs: string[]; publishedAt: string | null };
 type ScoredSignal = { kind: string; value: number | null };
 
 function pushTo<T>(map: Map<string, T[]>, key: string, value: T): void {
@@ -113,13 +122,18 @@ function offerTechSlugs(offer: { title: string; description: string | null }): s
   return detectTechs(`${offer.title}\n${offer.description ?? ''}`, TAGS, 0.8).map((d) => d.slug);
 }
 
-function activeOfferTechs(db: Db, siren: string): ScoredOffer[] {
+function activeOffersOf(db: Db, siren: string): ScoredOffer[] {
   return db
-    .select({ title: jobOffers.title, description: jobOffers.description })
+    .select({
+      id: jobOffers.id,
+      title: jobOffers.title,
+      description: jobOffers.description,
+      publishedAt: jobOffers.publishedAt,
+    })
     .from(jobOffers)
     .where(and(eq(jobOffers.siren, siren), eq(jobOffers.isActive, true)))
     .all()
-    .map((o) => ({ techSlugs: offerTechSlugs(o) }));
+    .map((o) => ({ id: o.id, techSlugs: offerTechSlugs(o), publishedAt: o.publishedAt }));
 }
 
 /** Score pur : aucune requête, toutes les données sont fournies par l'appelant. */
@@ -130,9 +144,15 @@ function scoreFromParts(
   techs: { tagSlug: string; confidence: number }[],
   offers: ScoredOffer[],
   sig: ScoredSignal[],
+  now: Date,
 ): ScoreResult {
   return scoreCompany(
-    { skills: profile.skills, radiusKm: profile.radiusKm, headcountRanges: profile.headcountRanges },
+    {
+      skills: profile.skills,
+      radiusKm: profile.radiusKm,
+      headcountRanges: profile.headcountRanges,
+      newOfferDays: profile.newOfferDays,
+    },
     {
       headcountRange: company.headcountRange,
       techs: techs.map((t) => ({ slug: t.tagSlug, confidence: t.confidence })),
@@ -140,10 +160,16 @@ function scoreFromParts(
       signals: sig,
     },
     distanceKm,
+    now,
   );
 }
 
-export function listCompanies(db: Db, profile: Profile, filters: Filters): CompanyListItem[] {
+export function listCompanies(
+  db: Db,
+  profile: Profile,
+  filters: Filters,
+  now: Date = new Date(),
+): CompanyListItem[] {
   const inRadius = companiesWithinRadius(
     db,
     { latitude: profile.homeLatitude, longitude: profile.homeLongitude },
@@ -159,13 +185,20 @@ export function listCompanies(db: Db, profile: Profile, filters: Filters): Compa
   const inRadiusSirens = new Set(inRadius.map((c) => c.siren));
   const offersBySiren = new Map<string, ScoredOffer[]>();
   const activeOffers = db
-    .select({ siren: jobOffers.siren, title: jobOffers.title, description: jobOffers.description })
+    .select({
+      id: jobOffers.id,
+      siren: jobOffers.siren,
+      title: jobOffers.title,
+      description: jobOffers.description,
+      publishedAt: jobOffers.publishedAt,
+    })
     .from(jobOffers)
     .where(and(eq(jobOffers.isActive, true), isNotNull(jobOffers.siren)))
     .all();
   for (const o of activeOffers) {
     const siren = o.siren as string;
-    if (inRadiusSirens.has(siren)) pushTo(offersBySiren, siren, { techSlugs: offerTechSlugs(o) });
+    if (inRadiusSirens.has(siren))
+      pushTo(offersBySiren, siren, { id: o.id, techSlugs: offerTechSlugs(o), publishedAt: o.publishedAt });
   }
   const signalsBySiren = new Map<string, ScoredSignal[]>();
   for (const s of db
@@ -181,6 +214,7 @@ export function listCompanies(db: Db, profile: Profile, filters: Filters): Compa
       .all()
       .map((r) => [r.siren, r.status]),
   );
+  const seen = seenOfferIds(db, profile.id);
   const q = filters.q.toLowerCase();
 
   const items: CompanyListItem[] = [];
@@ -189,10 +223,13 @@ export function listCompanies(db: Db, profile: Profile, filters: Filters): Compa
     const status = statusBySiren.get(c.siren) ?? 'to_review';
     const offers = offersBySiren.get(c.siren) ?? [];
     const recruiting = offers.length > 0;
+    const recentOffers = offers.filter((o) => isRecentOffer(o.publishedAt, profile.newOfferDays, now)).length;
+    const unseenOffers = offers.filter((o) => !seen.has(o.id)).length;
     if (filters.techs.length > 0 && !filters.techs.every((slug) => techs.some((t) => t.tagSlug === slug)))
       continue;
     if (filters.headcount.length > 0 && !filters.headcount.includes(c.headcountRange ?? '')) continue;
     if (filters.recruiting && !recruiting) continue;
+    if (filters.nouvelles && recentOffers === 0) continue;
     if (filters.status && status !== filters.status) continue;
     if (q && !`${c.name} ${c.legalName} ${c.city ?? ''}`.toLowerCase().includes(q)) continue;
     items.push({
@@ -205,7 +242,10 @@ export function listCompanies(db: Db, profile: Profile, filters: Filters): Compa
       headcountRange: c.headcountRange,
       topTechs: bestTechs(techs, filters.techs).slice(0, 3),
       recruiting,
-      score: scoreFromParts(profile, c, c.distanceKm, techs, offers, signalsBySiren.get(c.siren) ?? []).score,
+      recentOffers,
+      unseenOffers,
+      score: scoreFromParts(profile, c, c.distanceKm, techs, offers, signalsBySiren.get(c.siren) ?? [], now)
+        .score,
       status,
     });
   }
@@ -240,6 +280,24 @@ export function countCompanies(db: Db): number {
   return db.select({ n: count() }).from(companies).get()?.n ?? 0;
 }
 
+/** Offres actives rattachées à une entreprise du rayon et jamais affichées dans une fiche. */
+export function countUnseenOffersInRadius(db: Db, profile: Profile): number {
+  const sirens = new Set(
+    companiesWithinRadius(
+      db,
+      { latitude: profile.homeLatitude, longitude: profile.homeLongitude },
+      profile.radiusKm,
+    ).map((c) => c.siren),
+  );
+  const seen = seenOfferIds(db, profile.id);
+  return db
+    .select({ id: jobOffers.id, siren: jobOffers.siren })
+    .from(jobOffers)
+    .where(and(eq(jobOffers.isActive, true), isNotNull(jobOffers.siren)))
+    .all()
+    .filter((o) => sirens.has(o.siren as string) && !seen.has(o.id)).length;
+}
+
 export type TechDetail = {
   slug: string;
   label: string;
@@ -259,17 +317,25 @@ export type CompanyDetail = {
     contractType: string | null;
     publishedAt: string | null;
     url: string | null;
+    isRecent: boolean;
+    unseen: boolean;
   }[];
   signals: { kind: string; value: number | null; evidence: string | null; detectedAt: string }[];
   score: ScoreResult;
   status: CompanyStatus;
   notes: string;
   links: { linkedinSearch: string; googleSearch: string; itinerary: string };
+  letters: CoverLetterWithOffer[];
 };
 
 const CATEGORY_ORDER: TechCategory[] = ['language', 'framework', 'database', 'cloud', 'tool', 'domain'];
 
-export function getCompanyDetail(db: Db, profile: Profile, siren: string): CompanyDetail | null {
+export function getCompanyDetail(
+  db: Db,
+  profile: Profile,
+  siren: string,
+  opts: { markSeen?: boolean; now?: Date } = {},
+): CompanyDetail | null {
   const company = db.select().from(companies).where(eq(companies.siren, siren)).get();
   if (!company) return null;
   const distanceKm = computeDistanceKm(
@@ -306,7 +372,9 @@ export function getCompanyDetail(db: Db, profile: Profile, siren: string): Compa
         Math.max(...b.sources.map((s) => s.confidence)) - Math.max(...a.sources.map((s) => s.confidence)),
     ),
   }));
-  const activeOffers = db
+  const now = opts.now ?? new Date();
+  const offers = activeOffersOf(db, siren);
+  const offerRows = db
     .select({
       id: jobOffers.id,
       title: jobOffers.title,
@@ -318,6 +386,31 @@ export function getCompanyDetail(db: Db, profile: Profile, siren: string): Compa
     .where(and(eq(jobOffers.siren, siren), eq(jobOffers.isActive, true)))
     .orderBy(desc(jobOffers.publishedAt))
     .all();
+  // Les offres non vues sont calculées avant l'enregistrement des vues : la fiche les signale une fois.
+  let unseen: Set<string>;
+  if (opts.markSeen) {
+    try {
+      unseen = new Set(
+        recordOfferViews(
+          db,
+          profile.id,
+          offerRows.map((o) => o.id),
+        ),
+      );
+    } catch (err) {
+      // L'enregistrement des vues ne doit jamais casser l'affichage de la fiche.
+      console.warn(`offer_views : ${err instanceof Error ? err.message : String(err)}`);
+      unseen = new Set();
+    }
+  } else {
+    const seen = seenOfferIds(db, profile.id);
+    unseen = new Set(offerRows.filter((o) => !seen.has(o.id)).map((o) => o.id));
+  }
+  const activeOffers = offerRows.map((o) => ({
+    ...o,
+    isRecent: isRecentOffer(o.publishedAt, profile.newOfferDays, now),
+    unseen: unseen.has(o.id),
+  }));
   const sig = db
     .select({
       kind: signals.kind,
@@ -340,7 +433,7 @@ export function getCompanyDetail(db: Db, profile: Profile, siren: string): Compa
     techGroups,
     activeOffers,
     signals: sig,
-    score: scoreFromParts(profile, company, distanceKm, techRows, activeOfferTechs(db, siren), sig),
+    score: scoreFromParts(profile, company, distanceKm, techRows, offers, sig, now),
     status: status?.status ?? 'to_review',
     notes: status?.notes ?? '',
     links: {
@@ -348,6 +441,7 @@ export function getCompanyDetail(db: Db, profile: Profile, siren: string): Compa
       googleSearch: googleSearchUrl(company.name, company.city),
       itinerary: itineraryUrl({ latitude: profile.homeLatitude, longitude: profile.homeLongitude }, company),
     },
+    letters: listCoverLetters(db, profile.id, siren),
   };
 }
 
@@ -418,6 +512,8 @@ export type RunWithStatus = CrawlRun & { status: RunStatus };
 
 /** Au-delà de ce délai sans fin enregistrée, un run est considéré comme interrompu. */
 const RUNNING_MAX_MS = 2 * 60 * 60 * 1000;
+/** Au-delà de ce délai depuis le dernier refresh terminé, la page pipeline le signale comme ancien. */
+const REFRESH_STALE_AFTER_MS = 12 * 60 * 60 * 1000;
 
 function runStatus(run: CrawlRun, now: number): RunStatus {
   if (run.finishedAt) return 'done';
@@ -425,9 +521,9 @@ function runStatus(run: CrawlRun, now: number): RunStatus {
   return Number.isNaN(started) || now - started > RUNNING_MAX_MS ? 'aborted' : 'running';
 }
 
-export function pipelineOverview(db: Db) {
+export function pipelineOverview(db: Db, nowDate: Date = new Date()) {
   const one = (q: { get: () => { c: number } | undefined }) => q.get()?.c ?? 0;
-  const now = Date.now();
+  const now = nowDate.getTime();
   const runs: RunWithStatus[] = db
     .select()
     .from(crawlRuns)
@@ -435,8 +531,21 @@ export function pipelineOverview(db: Db) {
     .limit(20)
     .all()
     .map((run) => ({ ...run, status: runStatus(run, now) }));
+  const lastRefreshRow = db
+    .select()
+    .from(crawlRuns)
+    .where(and(eq(crawlRuns.command, 'refresh'), isNotNull(crawlRuns.finishedAt)))
+    .orderBy(desc(crawlRuns.id))
+    .get();
+  const lastRefresh: RunWithStatus | null = lastRefreshRow
+    ? { ...lastRefreshRow, status: runStatus(lastRefreshRow, now) }
+    : null;
+  const refreshStale =
+    !!lastRefresh?.finishedAt && now - Date.parse(lastRefresh.finishedAt) > REFRESH_STALE_AFTER_MS;
   return {
     runs,
+    lastRefresh,
+    refreshStale,
     counts: {
       companies: one(db.select({ c: count() }).from(companies)),
       withWebsite: one(db.select({ c: count() }).from(companies).where(isNotNull(companies.website))),
