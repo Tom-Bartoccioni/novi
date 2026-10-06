@@ -29,6 +29,9 @@ importers:
       '@base-ui/react':
         specifier: ^1.8.0
         version: 1.8.0(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      '@novi/assist':
+        specifier: workspace:*
+        version: link:../../packages/assist
       '@novi/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -47,6 +50,9 @@ importers:
       cn:
         specifier: ^0.4.0
         version: 0.4.0
+      dotenv:
+        specifier: ^18.0.4
+        version: 18.0.4
       drizzle-orm:
         specifier: ^0.45.3
         version: 0.45.3(@types/better-sqlite3@9.6.0)(better-sqlite3@13.0.3)
