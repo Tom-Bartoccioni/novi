@@ -51,7 +51,6 @@ export async function refresh(
         return await fn();
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        warn(`étape ${name} échouée : ${message}`);
         failed.push(name);
         failures.push(`${name} : ${message}`);
         ctx.error(undefined, new Error(`${name} : ${message}`));
