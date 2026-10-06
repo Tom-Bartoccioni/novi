@@ -6,6 +6,7 @@ import { enrichGithub } from './steps/enrich-github';
 import { ingestOffres } from './steps/ingest-offres';
 import { ingestSirene } from './steps/ingest-sirene';
 import { matchOffres } from './steps/match-offres';
+import { refresh } from './steps/refresh';
 import { runAll } from './steps/run-all';
 import { computeSignals } from './steps/signals';
 
@@ -79,6 +80,15 @@ program
   .option('-d, --departement <code>', 'département', '06')
   .action(async (opts: { departement: string }) => {
     await runAll(getDb(), opts);
+  });
+program
+  .command('refresh')
+  .description(
+    'Rafraîchissement léger : offres France Travail, rattachement, signaux (pour la planification)',
+  )
+  .option('-d, --departement <code>', 'département', '06')
+  .action(async (opts: { departement: string }) => {
+    await refresh(getDb(), opts);
   });
 
 program.parseAsync(process.argv);
