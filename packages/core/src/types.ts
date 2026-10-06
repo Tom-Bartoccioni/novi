@@ -21,7 +21,7 @@ export type ScoreProfile = {
   skills: string[];
   radiusKm: number;
   headcountRanges: string[];
-  /** Fenêtre de « nouveauté » d'une offre, en jours (7 par défaut). */
+  /** Fenêtre de « nouveauté » d'une offre, en jours (7 par défaut). 0 ou moins : aucune offre n'est considérée comme récente. */
   newOfferDays?: number;
 };
 

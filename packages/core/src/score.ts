@@ -19,10 +19,14 @@ export function isRecentOffer(
   days: number,
   now: Date = new Date(),
 ): boolean {
-  if (!publishedAt) return false;
+  if (!publishedAt || days <= 0) return false;
   const t = Date.parse(publishedAt);
   if (Number.isNaN(t)) return false;
   return now.getTime() - t < days * 24 * 60 * 60 * 1000;
+}
+
+function plural(n: number): string {
+  return n > 1 ? 's' : '';
 }
 
 function round1(n: number): number {
@@ -73,23 +77,27 @@ export function scoreCompany(
   const active = company.activeOffers.length;
   if (active > 0) {
     const days = profile.newOfferDays ?? DEFAULT_NEW_OFFER_DAYS;
-    const matching = company.activeOffers.filter((o) => o.techSlugs.some((s) => skills.has(s)));
-    const recentMatching = matching.filter((o) => isRecentOffer(o.publishedAt, days, now)).length;
-    const anyRecent = company.activeOffers.some((o) => isRecentOffer(o.publishedAt, days, now));
-    const plural = (n: number) => (n > 1 ? 's' : '');
+    const isMatching = (o: { techSlugs: string[] }) => o.techSlugs.some((s) => skills.has(s));
+    const recent = company.activeOffers.filter((o) => isRecentOffer(o.publishedAt, days, now));
+    const recentMatching = recent.filter(isMatching).length;
+    const matching = company.activeOffers.filter(isMatching).length;
     if (recentMatching > 0) {
+      const n = recentMatching;
       lines.push({
-        label: `${recentMatching} offre${plural(recentMatching)} récente${plural(recentMatching)} correspondant au profil`,
+        label: `${n} offre${plural(n)} récente${plural(n)} correspondant au profil`,
         points: OFFER_MATCH_RECENT,
       });
-    } else if (matching.length > 0) {
+    } else if (matching > 0) {
+      const n = matching;
       lines.push({
-        label: `${matching.length} offre${plural(matching.length)} active${plural(matching.length)} correspondant au profil`,
+        label: `${n} offre${plural(n)} active${plural(n)} correspondant au profil`,
         points: OFFER_MATCH,
       });
-    } else if (anyRecent) {
+    } else if (recent.length > 0) {
+      const k = recent.length;
+      const tail = k === 1 ? 'dont une récente' : `dont ${k} récentes`;
       lines.push({
-        label: `${active} offre${plural(active)} active${plural(active)}, dont une récente`,
+        label: `${active} offre${plural(active)} active${plural(active)}, ${tail}`,
         points: OFFER_NO_MATCH_RECENT,
       });
     } else {

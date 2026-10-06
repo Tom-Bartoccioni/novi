@@ -179,7 +179,7 @@ Ligne « offres » :
 |---|---|---|
 | Au moins une offre correspondant au profil et récente | 20 | « N offre(s) récente(s) correspondant au profil » |
 | Au moins une offre correspondant au profil | 15 | inchangé |
-| Offres actives sans correspondance, dont une récente | 10 | « N offre(s) active(s), dont une récente » |
+| Offres actives sans correspondance, dont une récente | 10 | « N offre(s) active(s), dont K récente(s) » |
 | Offres actives sans correspondance | 8 | inchangé |
 
 Une offre est récente si `publishedAt` est non nul et `now - publishedAt < newOfferDays` jours. Le total théorique passe de 100 à 105 ; l'affichage ne plafonne pas.

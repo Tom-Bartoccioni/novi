@@ -180,4 +180,25 @@ describe('recent offers', () => {
     );
     expect(r.lines[0]?.points).toBe(20);
   });
+  it('pluralizes the recent count when several offers are recent', () => {
+    const r = scoreCompany(
+      { ...profile, newOfferDays: 7 },
+      {
+        ...base,
+        headcountRange: null,
+        activeOffers: [
+          { techSlugs: ['php'], publishedAt: recent },
+          { techSlugs: [], publishedAt: recent },
+        ],
+      },
+      30,
+      now,
+    );
+    expect(r.lines).toContainEqual({ label: '2 offres actives, dont 2 récentes', points: 10 });
+  });
+  it('treats exactly 7 days as not recent, 1 ms less as recent', () => {
+    const edge = 7 * 86400000;
+    expect(isRecentOffer(new Date(now.getTime() - edge).toISOString(), 7, now)).toBe(false);
+    expect(isRecentOffer(new Date(now.getTime() - edge + 1).toISOString(), 7, now)).toBe(true);
+  });
 });
