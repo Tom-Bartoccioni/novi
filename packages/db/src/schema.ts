@@ -138,6 +138,19 @@ export const profiles = sqliteTable('profiles', {
   radiusKm: real('radius_km').notNull(),
   skills: text('skills', { mode: 'json' }).$type<string[]>().notNull().default([]),
   headcountRanges: text('headcount_ranges', { mode: 'json' }).$type<string[]>().notNull().default([]),
+  // V2 : identité (jamais envoyée au LLM, sert à masquer puis rétablir), CV, fenêtre de nouveauté.
+  firstName: text('first_name'),
+  lastName: text('last_name'),
+  email: text('email'),
+  phone: text('phone'),
+  postalAddress: text('postal_address'),
+  links: text('links', { mode: 'json' }).$type<string[]>().notNull().default([]),
+  revealFirstName: integer('reveal_first_name', { mode: 'boolean' }).notNull().default(false),
+  cvFilename: text('cv_filename'),
+  cvText: text('cv_text'),
+  cvPages: integer('cv_pages'),
+  cvUploadedAt: text('cv_uploaded_at'),
+  newOfferDays: integer('new_offer_days').notNull().default(7),
   ...timestamps,
 });
 
@@ -158,6 +171,39 @@ export const companyStatus = sqliteTable(
     ...timestamps,
   },
   (t) => [primaryKey({ columns: [t.profileId, t.siren] })],
+);
+
+export const coverLetters = sqliteTable(
+  'cover_letters',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    profileId: integer('profile_id')
+      .notNull()
+      .references(() => profiles.id, { onDelete: 'cascade' }),
+    siren: text('siren')
+      .notNull()
+      .references(() => companies.siren, { onDelete: 'cascade' }),
+    offerId: text('offer_id').references(() => jobOffers.id, { onDelete: 'set null' }),
+    instruction: text('instruction'),
+    content: text('content').notNull(),
+    model: text('model').notNull(),
+    createdAt: text('created_at').notNull().$defaultFn(now),
+  },
+  (t) => [index('cover_letters_profile_siren').on(t.profileId, t.siren)],
+);
+
+export const offerViews = sqliteTable(
+  'offer_views',
+  {
+    profileId: integer('profile_id')
+      .notNull()
+      .references(() => profiles.id, { onDelete: 'cascade' }),
+    offerId: text('offer_id')
+      .notNull()
+      .references(() => jobOffers.id, { onDelete: 'cascade' }),
+    seenAt: text('seen_at').notNull().$defaultFn(now),
+  },
+  (t) => [primaryKey({ columns: [t.profileId, t.offerId] })],
 );
 
 export type RunStats = {
@@ -188,3 +234,5 @@ export type Signal = typeof signals.$inferSelect;
 export type Profile = typeof profiles.$inferSelect;
 export type CompanyTechRow = typeof companyTech.$inferSelect;
 export type CrawlRun = typeof crawlRuns.$inferSelect;
+export type CoverLetter = typeof coverLetters.$inferSelect;
+export type NewCoverLetter = typeof coverLetters.$inferInsert;

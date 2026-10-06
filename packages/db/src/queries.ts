@@ -1,10 +1,14 @@
 import { type Detection, type DetectionSource, normalizeCompanyName, type TechTag } from '@novi/core';
-import { and, eq, inArray, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import type { Db } from './client';
 import {
   companies,
   companyTech,
+  coverLetters,
   employerAliases,
+  jobOffers,
+  type NewCoverLetter,
+  offerViews,
   profiles,
   type SignalKind,
   signals,
@@ -138,4 +142,77 @@ export function companyExists(db: Db, siren: string): boolean {
     db.select({ siren: companies.siren }).from(companies).where(eq(companies.siren, siren)).get() !==
     undefined
   );
+}
+
+/** Enregistre les offres comme vues par le profil et renvoie celles qui ne l'étaient pas encore. */
+export function recordOfferViews(db: Db, profileId: number, offerIds: string[]): string[] {
+  if (offerIds.length === 0) return [];
+  const seen = new Set(
+    db
+      .select({ offerId: offerViews.offerId })
+      .from(offerViews)
+      .where(and(eq(offerViews.profileId, profileId), inArray(offerViews.offerId, offerIds)))
+      .all()
+      .map((r) => r.offerId),
+  );
+  const fresh = offerIds.filter((id) => !seen.has(id));
+  if (fresh.length > 0) {
+    db.insert(offerViews)
+      .values(fresh.map((offerId) => ({ profileId, offerId })))
+      .onConflictDoNothing()
+      .run();
+  }
+  return fresh;
+}
+
+export function seenOfferIds(db: Db, profileId: number): Set<string> {
+  return new Set(
+    db
+      .select({ offerId: offerViews.offerId })
+      .from(offerViews)
+      .where(eq(offerViews.profileId, profileId))
+      .all()
+      .map((r) => r.offerId),
+  );
+}
+
+export function insertCoverLetter(db: Db, letter: Omit<NewCoverLetter, 'id' | 'createdAt'>) {
+  return db.insert(coverLetters).values(letter).returning().get();
+}
+
+export type CoverLetterWithOffer = {
+  id: number;
+  offerId: string | null;
+  offerTitle: string | null;
+  instruction: string | null;
+  content: string;
+  model: string;
+  createdAt: string;
+};
+
+export function listCoverLetters(db: Db, profileId: number, siren: string): CoverLetterWithOffer[] {
+  return db
+    .select({
+      id: coverLetters.id,
+      offerId: coverLetters.offerId,
+      offerTitle: jobOffers.title,
+      instruction: coverLetters.instruction,
+      content: coverLetters.content,
+      model: coverLetters.model,
+      createdAt: coverLetters.createdAt,
+    })
+    .from(coverLetters)
+    .leftJoin(jobOffers, eq(jobOffers.id, coverLetters.offerId))
+    .where(and(eq(coverLetters.profileId, profileId), eq(coverLetters.siren, siren)))
+    .orderBy(desc(coverLetters.id))
+    .all();
+}
+
+/** Supprime une lettre du profil ; `false` si elle n'existe pas ou appartient à un autre profil. */
+export function deleteCoverLetter(db: Db, profileId: number, id: number): boolean {
+  const result = db
+    .delete(coverLetters)
+    .where(and(eq(coverLetters.id, id), eq(coverLetters.profileId, profileId)))
+    .run();
+  return result.changes > 0;
 }
