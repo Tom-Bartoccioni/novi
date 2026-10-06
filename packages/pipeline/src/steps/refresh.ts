@@ -41,15 +41,20 @@ export async function refresh(
   }
   const startedAt = new Date().toISOString();
   const failed: string[] = [];
+  const failures: string[] = [];
   let linked = 0;
   const result = await withRun(db, 'refresh', { departement: opts.departement }, async (ctx) => {
-    // Une sous-étape en échec est journalisée puis on continue : withRun ne lève donc jamais ici.
+    // Une sous-étape en échec est journalisée puis on continue. Seule une erreur hors de ce garde
+    // (la requête de comptage ci-dessous) ferait encore lever withRun, après finalisation du run.
     const step = async <T>(name: string, fn: () => Promise<T>): Promise<T | undefined> => {
       try {
         return await fn();
       } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        warn(`étape ${name} échouée : ${message}`);
         failed.push(name);
-        ctx.error(undefined, err);
+        failures.push(`${name} : ${message}`);
+        ctx.error(undefined, new Error(`${name} : ${message}`));
         return undefined;
       }
     };
@@ -67,11 +72,12 @@ export async function refresh(
     ctx.stats.processed = ctx.stats.newOffers;
   });
   const newOffers = Number(result.stats.newOffers ?? 0);
+  const counts = `${newOffers} nouvelle(s) offre(s), ${linked} rattachée(s)`;
   if (failed.length > 0) {
     process.exitCode = 1;
-    warn(`Refresh terminé avec ${failed.length} étape(s) en échec : ${failed.join(', ')}`);
+    warn(`Refresh terminé avec ${failed.length} étape(s) en échec (${failures.join(', ')}) ; ${counts}`);
   } else {
-    log(`Refresh terminé : ${newOffers} nouvelle(s) offre(s), ${linked} rattachée(s)`);
+    log(`Refresh terminé : ${counts}`);
   }
   return { newOffers, linked, failed };
 }
