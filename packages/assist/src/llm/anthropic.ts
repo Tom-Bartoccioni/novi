@@ -1,6 +1,13 @@
 import type Anthropic from '@anthropic-ai/sdk';
 import { LlmError } from '../errors';
-import { assertValidApiKey, cancelledError, parseRetryAfter, timeoutError, unreachableError } from './shared';
+import {
+  assertValidApiKey,
+  cancelledError,
+  parseRetryAfter,
+  timeoutError,
+  truncatedError,
+  unreachableError,
+} from './shared';
 import { type GenerateInput, type GenerateResult, LLM_TIMEOUT_MS, type TextGenerator } from './types';
 
 export const ANTHROPIC_DEFAULT_MODEL = 'claude-opus-5-5';
@@ -52,6 +59,7 @@ export function createAnthropicGenerator(opts: AnthropicOptions): TextGenerator 
           { timeout: timeoutMs, signal },
         );
         if (response.stop_reason === 'refusal') throw new LlmError('refused');
+        if (response.stop_reason === 'max_tokens') throw truncatedError();
         // Seuls les blocs de texte forment la réponse ; les blocs de réflexion sont ignorés.
         const text = response.content
           .flatMap((b) => (b.type === 'text' ? [b.text] : []))

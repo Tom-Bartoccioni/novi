@@ -167,7 +167,7 @@ Système (français) : rédacteur de lettres de motivation pour un développeur 
 
 Utilisateur : CV, puis entreprise (champs disponibles seulement), puis offre si présente, puis « Consigne particulière » si présente, puis la demande : « Rédige la lettre de candidature spontanée » ou « Rédige la lettre de motivation pour cette offre ».
 
-`maxTokens` : 2048 (sortie volontairement courte).
+`maxTokens` : 8192 (sortie courte, mais les modèles à raisonnement comme Gemini 2.5 Flash comptent leurs jetons de réflexion dans ce plafond). Une réponse coupée au plafond (`finish_reason === 'length'` côté openai-compatible, `stop_reason === 'max_tokens'` côté anthropic) lève `LlmError('bad_response')` avec le message « Réponse tronquée par le fournisseur LLM : réessayez ou augmentez la limite » : une lettre tronquée n'est jamais enregistrée.
 
 ## 5. Score
 

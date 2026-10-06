@@ -78,9 +78,19 @@ export default async function CompanyPage({ params }: { params: Promise<{ siren:
           reason: 'Renseignez votre nom dans le profil : il sert à anonymiser le CV avant envoi.',
           href: '/profil',
         }
-      : !profile.cvText
-        ? { ok: false, reason: 'Importez votre CV dans le profil pour générer des lettres.', href: '/profil' }
-        : { ok: true, label: llm.label };
+      : !profile.firstName?.trim() && !profile.revealFirstName
+        ? {
+            ok: false,
+            reason: 'Renseignez votre prénom dans le profil, ou cochez « Laisser passer mon prénom au LLM ».',
+            href: '/profil',
+          }
+        : !profile.cvText
+          ? {
+              ok: false,
+              reason: 'Importez votre CV dans le profil pour générer des lettres.',
+              href: '/profil',
+            }
+          : { ok: true, label: llm.label };
   const nafLabel = company.nafLabel ?? NAF_LABELS[company.nafCode] ?? company.nafCode;
   const financeYears = Object.entries(company.finances ?? {}).sort(([a], [b]) => a.localeCompare(b));
 

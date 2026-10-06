@@ -61,6 +61,10 @@ export async function generateLetterFor(
       'Renseignez votre nom dans le profil : sans lui, le CV ne peut pas être anonymisé avant envoi',
     );
   }
+  // Sans prénom connu, celui écrit dans le CV ne serait pas masqué : il partirait en clair.
+  if (!identity.firstName && !identity.revealFirstName) {
+    throw new Error('Renseignez votre prénom dans le profil, ou cochez « Laisser passer mon prénom au LLM »');
+  }
   const company = db.select().from(companies).where(eq(companies.siren, request.siren)).get();
   if (!company) throw new Error(`Entreprise inconnue : ${request.siren}`);
   const offer = request.offerId

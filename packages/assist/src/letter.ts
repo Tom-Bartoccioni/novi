@@ -1,6 +1,7 @@
 import type { GenerateInput } from './llm/types';
 
-export const LETTER_MAX_TOKENS = 2048;
+// Sortie courte, mais les modèles à raisonnement comptent leurs jetons de réflexion dans ce plafond.
+export const LETTER_MAX_TOKENS = 8192;
 
 export type LetterInput = {
   profile: { homeLabel: string; skills: string[] };

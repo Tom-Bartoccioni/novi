@@ -23,6 +23,13 @@ export function timeoutError(timeoutMs: number): LlmError {
   return new LlmError('timeout', { message: `Délai dépassé (${seconds} s) en attendant le fournisseur LLM` });
 }
 
+/** Réponse coupée au plafond `maxTokens` : une lettre tronquée ne doit pas être enregistrée. */
+export function truncatedError(): LlmError {
+  return new LlmError('bad_response', {
+    message: 'Réponse tronquée par le fournisseur LLM : réessayez ou augmentez la limite',
+  });
+}
+
 /** Valeur d'un en-tête `retry-after` en secondes, ou `undefined` si elle est absente ou illisible. */
 export function parseRetryAfter(value: string | null | undefined): number | undefined {
   const seconds = Number(value);

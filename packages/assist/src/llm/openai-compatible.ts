@@ -1,5 +1,12 @@
 import { LlmError } from '../errors';
-import { assertValidApiKey, cancelledError, parseRetryAfter, timeoutError, unreachableError } from './shared';
+import {
+  assertValidApiKey,
+  cancelledError,
+  parseRetryAfter,
+  timeoutError,
+  truncatedError,
+  unreachableError,
+} from './shared';
 import { type GenerateInput, type GenerateResult, LLM_TIMEOUT_MS, type TextGenerator } from './types';
 
 export type OpenAiCompatibleOptions = {
@@ -79,6 +86,7 @@ export function createOpenAiCompatibleGenerator(opts: OpenAiCompatibleOptions): 
       }
       const choice = json?.choices?.[0];
       if (choice?.finish_reason === 'content_filter') throw new LlmError('refused');
+      if (choice?.finish_reason === 'length') throw truncatedError();
       const text = choice?.message?.content?.trim();
       if (!text) throw new LlmError('bad_response');
       return { text, model: json?.model ?? opts.model };

@@ -58,7 +58,8 @@ describe('buildLetterPrompt', () => {
     expect(buildLetterPrompt({ ...base, revealFirstName: true }).system).toMatch(/prénom/i);
     expect(buildLetterPrompt(base).system).not.toMatch(/le prénom du candidat est en clair/i);
   });
-  it('exposes a short max tokens budget', () => {
-    expect(LETTER_MAX_TOKENS).toBe(2048);
+  it('leaves room for reasoning tokens in the max tokens budget', () => {
+    expect(LETTER_MAX_TOKENS).toBe(8192);
+    expect(buildLetterPrompt(base).maxTokens).toBe(8192);
   });
 });

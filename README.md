@@ -26,6 +26,8 @@ pnpm pipeline run all --departement 06
 pnpm dev                  # puis http://localhost:3000
 ```
 
+Pour générer des lettres, importer le CV et renseigner prénom et nom sur `/profil`. Redémarrer `pnpm dev` après toute modification de `.env` : il n'est lu qu'au démarrage.
+
 ## Commandes du pipeline
 
 | Commande | Rôle |
@@ -92,4 +94,4 @@ pnpm db:generate  # après modification de packages/db/src/schema.ts
 
 ## Confidentialité
 
-Le texte du CV, la fiche entreprise et l'offre sont envoyés au fournisseur LLM configuré. Nom, prénom, e-mail, téléphone, adresse et liens déclarés dans le profil sont remplacés par des jetons avant envoi et rétablis localement dans la lettre (le prénom passe en clair si la case « Laisser passer mon prénom au LLM » est cochée dans le profil). « Voir ce qui a été envoyé » sur la fiche montre exactement le texte transmis.
+Le texte du CV, la fiche entreprise et l'offre sont envoyés au fournisseur LLM configuré. Nom, prénom, e-mail, téléphone, adresse et liens déclarés dans le profil sont remplacés par des jetons avant envoi et rétablis localement dans la lettre (le prénom passe en clair si la case « Laisser passer mon prénom au LLM » est cochée dans le profil). « Voir ce qui a été envoyé » sur la fiche montre exactement le texte transmis, à l'exception du prompt système : un texte fixe de consignes de rédaction, sans aucune donnée du profil (`packages/assist/src/letter.ts`).

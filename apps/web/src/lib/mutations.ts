@@ -143,6 +143,10 @@ export function applyProfile(database: Db, profileId: number, input: ProfileInpu
     throw new Error('La fenêtre de nouveauté doit être un nombre entier de jours entre 1 et 90');
   const email = nullable(input.email);
   if (email && !EMAIL_RE.test(email)) throw new Error('Adresse e-mail invalide');
+  // `anonymize` ne masque pas les noms de moins de 3 caractères : un tel nom partirait en clair.
+  const lastName = nullable(input.lastName);
+  if (lastName && lastName.length < 3)
+    throw new Error('Le nom doit faire au moins 3 caractères pour pouvoir être masqué');
   const known = new Set(loadTechTags().map((t) => t.slug));
   const knownRanges = new Set(Object.keys(HEADCOUNT_LABELS));
   const set: Partial<typeof profiles.$inferInsert> = {
@@ -154,7 +158,7 @@ export function applyProfile(database: Db, profileId: number, input: ProfileInpu
     headcountRanges: input.headcountRanges.filter((r) => knownRanges.has(r)),
   };
   if (input.firstName !== undefined) set.firstName = nullable(input.firstName);
-  if (input.lastName !== undefined) set.lastName = nullable(input.lastName);
+  if (input.lastName !== undefined) set.lastName = lastName;
   if (input.email !== undefined) set.email = email;
   if (input.phone !== undefined) set.phone = nullable(input.phone);
   if (input.postalAddress !== undefined) set.postalAddress = nullable(input.postalAddress);

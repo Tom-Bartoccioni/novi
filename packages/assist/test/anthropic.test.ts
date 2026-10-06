@@ -118,6 +118,18 @@ describe('createAnthropicGenerator', () => {
     const gen = createAnthropicGenerator({ apiKey: 'k', model: 'm' });
     await expect(gen.generate(input)).rejects.toMatchObject({ code: 'refused' });
   });
+  it('rejects a response truncated at the max tokens limit, even with partial text', async () => {
+    create.mockResolvedValue({
+      model: 'm',
+      stop_reason: 'max_tokens',
+      content: [{ type: 'text', text: 'Madame, Monsieur, je' }],
+    });
+    const gen = createAnthropicGenerator({ apiKey: 'k', model: 'm' });
+    await expect(gen.generate(input)).rejects.toMatchObject({
+      code: 'bad_response',
+      message: 'Réponse tronquée par le fournisseur LLM : réessayez ou augmentez la limite',
+    });
+  });
   it('maps SDK errors to LlmError codes', async () => {
     const gen = createAnthropicGenerator({ apiKey: 'k', model: 'm' });
     create.mockRejectedValueOnce(new AuthenticationError(401));

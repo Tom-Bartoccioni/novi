@@ -132,6 +132,14 @@ describe('createOpenAiCompatibleGenerator', () => {
       await expect(gen.generate(input)).rejects.toMatchObject({ code: 'refused' });
     }
   });
+  it('rejects a response truncated at the max tokens limit, even with partial text', async () => {
+    const body = { choices: [{ message: { content: 'Madame, Monsieur, je' }, finish_reason: 'length' }] };
+    const gen = createOpenAiCompatibleGenerator({ ...opts, fetchImpl: fakeFetch(200, body) });
+    await expect(gen.generate(input)).rejects.toMatchObject({
+      code: 'bad_response',
+      message: 'Réponse tronquée par le fournisseur LLM : réessayez ou augmentez la limite',
+    });
+  });
   it('maps an unreachable provider to http, with the network error code', async () => {
     const fetchImpl = vi.fn<FetchImpl>(async () => {
       throw new TypeError('fetch failed', { cause: { code: 'ECONNREFUSED' } });

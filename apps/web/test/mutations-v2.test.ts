@@ -90,6 +90,20 @@ describe('applyProfile V2 edge cases', () => {
     expect(getDefaultProfile(db).newOfferDays).toBe(90);
     expect(() => applyProfile(db, id, { ...baseInput, newOfferDays: 91 })).toThrow(/entre 1 et 90/);
   });
+  it('rejects a last name too short to be masked, but accepts an empty one', () => {
+    const db = seededDb();
+    const id = getDefaultProfile(db).id;
+    for (const lastName of ['Li', ' Ng ', 'X']) {
+      expect(() => applyProfile(db, id, { ...baseInput, lastName })).toThrow(
+        'Le nom doit faire au moins 3 caractères pour pouvoir être masqué',
+      );
+    }
+    expect(getDefaultProfile(db).lastName).toBeNull();
+    applyProfile(db, id, { ...baseInput, lastName: 'Lee' });
+    expect(getDefaultProfile(db).lastName).toBe('Lee');
+    applyProfile(db, id, { ...baseInput, lastName: '  ' });
+    expect(getDefaultProfile(db).lastName).toBeNull();
+  });
 });
 
 describe('applyCv', () => {

@@ -158,4 +158,23 @@ describe('generateLetterFor', () => {
     expect(gen.generate).not.toHaveBeenCalled();
     expect(db.select().from(coverLetters).all()).toHaveLength(0);
   });
+  it('refuses without a first name unless it may be revealed, since the CV one would go out in clear', async () => {
+    const { db, profile } = ready();
+    const gen = fakeGenerator('x');
+    for (const firstName of [null, '   ']) {
+      db.update(profiles).set({ firstName, revealFirstName: false }).where(eq(profiles.id, profile.id)).run();
+      await expect(generateLetterFor(db, getDefaultProfile(db), { siren: '000000001' }, gen)).rejects.toThrow(
+        'Renseignez votre prénom dans le profil, ou cochez « Laisser passer mon prénom au LLM »',
+      );
+    }
+    expect(gen.generate).not.toHaveBeenCalled();
+    expect(db.select().from(coverLetters).all()).toHaveLength(0);
+    db.update(profiles)
+      .set({ firstName: null, revealFirstName: true })
+      .where(eq(profiles.id, profile.id))
+      .run();
+    await generateLetterFor(db, getDefaultProfile(db), { siren: '000000001' }, gen);
+    expect(gen.generate).toHaveBeenCalledTimes(1);
+    expect(db.select().from(coverLetters).all()).toHaveLength(1);
+  });
 });
