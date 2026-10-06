@@ -146,16 +146,17 @@ export function companyExists(db: Db, siren: string): boolean {
 
 /** Enregistre les offres comme vues par le profil et renvoie celles qui ne l'étaient pas encore. */
 export function recordOfferViews(db: Db, profileId: number, offerIds: string[]): string[] {
-  if (offerIds.length === 0) return [];
+  const ids = [...new Set(offerIds)];
+  if (ids.length === 0) return [];
   const seen = new Set(
     db
       .select({ offerId: offerViews.offerId })
       .from(offerViews)
-      .where(and(eq(offerViews.profileId, profileId), inArray(offerViews.offerId, offerIds)))
+      .where(and(eq(offerViews.profileId, profileId), inArray(offerViews.offerId, ids)))
       .all()
       .map((r) => r.offerId),
   );
-  const fresh = offerIds.filter((id) => !seen.has(id));
+  const fresh = ids.filter((id) => !seen.has(id));
   if (fresh.length > 0) {
     db.insert(offerViews)
       .values(fresh.map((offerId) => ({ profileId, offerId })))

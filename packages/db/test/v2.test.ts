@@ -60,6 +60,11 @@ describe('offer views', () => {
     expect(seenOfferIds(db, profileId)).toEqual(new Set(['A', 'B']));
     expect(db.select().from(offerViews).all()).toHaveLength(2);
   });
+  it('ignores duplicated ids', () => {
+    const db = setup();
+    const profileId = getDefaultProfile(db).id;
+    expect(recordOfferViews(db, profileId, ['A', 'A'])).toEqual(['A']);
+  });
   it('cascades when the offer disappears', () => {
     const db = setup();
     const profileId = getDefaultProfile(db).id;
