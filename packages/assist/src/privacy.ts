@@ -84,10 +84,18 @@ function tokenSpans(text: string): Array<[number, number]> {
  * crochets, « [Dupont] », est remplacée crochets compris pour ne pas fabriquer « [[NOM]] », que `restore`
  * lirait comme un jeton littéral : les crochets sont donc perdus à la restauration.
  */
-function replaceValue(text: string, value: string, token: string): string {
-  const needle = fold(value.normalize('NFC').trim());
+function replaceValue(text: string, value: string, token: string, isLink = false): string {
+  let needle = fold(value.normalize('NFC').trim());
+  if (isLink) {
+    needle = needle
+      .replace(/^https?:\/\//, '')
+      .replace(/^www\./, '')
+      .replace(/\/+$/, '');
+  }
   if (needle.length < MIN_VALUE_LENGTH) return text;
-  const pattern = escapeRegex(needle).replace(/\s+/g, '\\s+');
+  let pattern = escapeRegex(needle).replace(/\s+/g, '\\s+');
+  // Un lien est reconnu avec ou sans schéma, avec ou sans « www. » et avec ou sans « / » final.
+  if (isLink) pattern = `(?:https?:\\/\\/)?(?:www\\.)?${pattern}\\/?`;
   const re = new RegExp(`(?<![\\p{L}\\p{N}\\p{M}])${pattern}(?![\\p{L}\\p{N}\\p{M}])`, 'gu');
   const spans = tokenSpans(text);
   const folded = fold(text);
@@ -107,19 +115,19 @@ function replaceValue(text: string, value: string, token: string): string {
   return out + text.slice(last);
 }
 
-type Replacement = { value: string; token: string };
+type Replacement = { value: string; token: string; isLink?: boolean };
 
 function replacements(identity: Identity): Replacement[] {
   const list: Replacement[] = [];
-  const push = (value: string | null | undefined, token: string) => {
-    if (value?.trim()) list.push({ value: value.trim(), token });
+  const push = (value: string | null | undefined, token: string, isLink = false) => {
+    if (value?.trim()) list.push({ value: value.trim(), token, isLink });
   };
   for (const f of FIELDS) {
     if (f === 'firstName' && identity.revealFirstName) continue;
     push(identity[f], TOKENS[f]);
   }
   identity.links.forEach((link, i) => {
-    push(link, linkToken(i));
+    push(link, linkToken(i), true);
   });
   // Les valeurs longues d'abord : « Jean-Pierre » part avant « Jean ».
   return list.sort((a, b) => b.value.length - a.value.length);
@@ -133,7 +141,7 @@ function replacements(identity: Identity): Replacement[] {
  */
 export function anonymize(text: string, identity: Identity): string {
   let out = text.normalize('NFC').replace(TOKEN_RE, '[[$1]]');
-  for (const r of replacements(identity)) out = replaceValue(out, r.value, r.token);
+  for (const r of replacements(identity)) out = replaceValue(out, r.value, r.token, r.isLink);
   out = out.replace(EMAIL_RE, TOKENS.email);
   out = out.replace(PHONE_RE, TOKENS.phone);
   return out;

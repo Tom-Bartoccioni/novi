@@ -12,6 +12,12 @@ const identity: Identity = {
 };
 
 describe('anonymize', () => {
+  it('masks a link whatever its scheme, www prefix or trailing slash', () => {
+    const id: Identity = { links: ['https://github.com/jpdupont'], revealFirstName: false };
+    expect(anonymize('profil : github.com/jpdupont et www.github.com/jpdupont/', id)).toBe(
+      'profil : [LIEN_1] et [LIEN_1]',
+    );
+  });
   it('replaces every known value by its token, case and accent insensitive', () => {
     const text =
       'JEAN-PIERRE DUPONT\nDéveloppeur\njp.dupont@example.com · 06 12 34 56 78\n12 rue des Lilas, 06000 Nice\nhttps://github.com/jpdupont';
