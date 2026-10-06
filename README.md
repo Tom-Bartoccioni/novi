@@ -84,8 +84,12 @@ pnpm db:generate  # après modification de packages/db/src/schema.ts
 - `packages/assist` : extraction du CV (PDF), anonymisation réversible, adaptateurs LLM et prompt de lettre. Aucune dépendance à la base.
 - `packages/pipeline` : ligne de commande d'ingestion.
 - `apps/web` : application Next.js. `pnpm dev` puis http://localhost:3000. Le worker de MapLibre est copié dans `public/maplibre/` (ignoré par git) par `scripts/copy-maplibre-worker.mjs` avant `dev` et `build`, parce que Turbopack ne sait pas le résoudre depuis le chunk.
-  - `/` exploration : liste et carte, filtres dans l'URL.
-  - `/entreprises/<siren>` fiche : identité, présence en ligne (avec « Analyser le site »), stack sourcée, offres, signaux, score expliqué, statut et notes.
+  - `/` exploration : liste et carte, filtres dans l'URL. Marqueurs orange et badge « Nouveau » pour les entreprises aux offres récentes, filtres « Nouvelles offres » et « Offres jamais consultées », bandeau du nombre d'offres jamais consultées dans le rayon.
+  - `/entreprises/<siren>` fiche : identité, présence en ligne (avec « Analyser le site »), stack sourcée, offres, signaux, score expliqué, statut et notes. Lettres de motivation (spontanée ou par offre) si `LLM_PROVIDER` est configuré et un CV importé.
   - `/employeurs-inconnus` : offres non rattachées, rattachement manuel mémorisé.
-  - `/profil` : adresse géocodée, rayon, tailles, compétences.
-  - `/pipeline` : compteurs et derniers runs.
+  - `/profil` : adresse géocodée, rayon, tailles, compétences, fenêtre de nouveauté des offres. CV (PDF) et identité masquée dans les envois au LLM.
+  - `/pipeline` : compteurs, dernier refresh automatique et derniers runs.
+
+## Confidentialité
+
+Le texte du CV, la fiche entreprise et l'offre sont envoyés au fournisseur LLM configuré. Nom, prénom, e-mail, téléphone, adresse et liens déclarés dans le profil sont remplacés par des jetons avant envoi et rétablis localement dans la lettre (le prénom passe en clair si la case « Laisser passer mon prénom au LLM » est cochée dans le profil). « Voir ce qui a été envoyé » sur la fiche montre exactement le texte transmis.
