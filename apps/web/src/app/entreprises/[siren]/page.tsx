@@ -3,9 +3,12 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { NotesField, StatusSelect, WebsiteField } from '@/components/company-actions';
+import { type LetterAvailability, LetterPanel } from '@/components/letter-panel';
 import { ScoreLines } from '@/components/score-lines';
 import { TechBadge } from '@/components/tech-badge';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { llmStatus } from '@/lib/assist';
 import { getCompanyDetail } from '@/lib/data';
 import { db, getProfile } from '@/lib/db';
 import { formatDate, formatDistance, formatEuros, headcountLabel } from '@/lib/format';
@@ -58,9 +61,26 @@ function External({ href, children }: { href: string; children: ReactNode }) {
 export default async function CompanyPage({ params }: { params: Promise<{ siren: string }> }) {
   const { siren } = await params;
   const profile = getProfile();
-  const detail = getCompanyDetail(db(), profile, siren);
+  const detail = getCompanyDetail(db(), profile, siren, { markSeen: true });
   if (!detail) notFound();
-  const { company, distanceKm, techGroups, activeOffers, signals, score, status, notes, links } = detail;
+  const { company, distanceKm, techGroups, activeOffers, signals, score, status, notes, links, letters } =
+    detail;
+  const llm = llmStatus();
+  const availability: LetterAvailability = !llm.configured
+    ? {
+        ok: false,
+        reason:
+          llm.problem ?? 'Aucun fournisseur LLM configuré : renseigner LLM_PROVIDER dans .env (voir README).',
+      }
+    : !profile.lastName?.trim()
+      ? {
+          ok: false,
+          reason: 'Renseignez votre nom dans le profil : il sert à anonymiser le CV avant envoi.',
+          href: '/profil',
+        }
+      : !profile.cvText
+        ? { ok: false, reason: 'Importez votre CV dans le profil pour générer des lettres.', href: '/profil' }
+        : { ok: true, label: llm.label };
   const nafLabel = company.nafLabel ?? NAF_LABELS[company.nafCode] ?? company.nafCode;
   const financeYears = Object.entries(company.finances ?? {}).sort(([a], [b]) => a.localeCompare(b));
 
@@ -195,16 +215,35 @@ export default async function CompanyPage({ params }: { params: Promise<{ siren:
             ) : (
               <ul className="space-y-1">
                 {activeOffers.map((o) => (
-                  <li key={o.id}>
+                  <li key={o.id} className="flex flex-wrap items-center gap-2">
+                    {o.unseen && (
+                      <span
+                        className="inline-block size-2 rounded-full bg-orange-600"
+                        title="Première fois affichée"
+                      />
+                    )}
                     {o.url ? <External href={o.url}>{o.title}</External> : o.title}
+                    {o.isRecent && (
+                      <Badge variant="outline" className="border-orange-600 text-orange-700">
+                        Nouveau
+                      </Badge>
+                    )}
                     <span className="text-muted-foreground">
-                      {' '}
                       · {o.contractType ?? '—'} · {formatDate(o.publishedAt)}
                     </span>
                   </li>
                 ))}
               </ul>
             )}
+          </Section>
+
+          <Section title="Lettre de motivation">
+            <LetterPanel
+              siren={company.siren}
+              offers={activeOffers.map((o) => ({ id: o.id, title: o.title }))}
+              letters={letters}
+              availability={availability}
+            />
           </Section>
 
           <Section title="Signaux">

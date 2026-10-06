@@ -1,0 +1,191 @@
+'use client';
+
+import Link from 'next/link';
+import { useState, useTransition } from 'react';
+import { deleteLetter, generateLetter } from '@/app/actions';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { formatDate } from '@/lib/format';
+
+// Copie structurelle de CoverLetterWithOffer : un composant client n'importe pas @novi/db.
+export type LetterSummary = {
+  id: number;
+  offerId: string | null;
+  offerTitle: string | null;
+  instruction: string | null;
+  content: string;
+  model: string;
+  createdAt: string;
+};
+
+export type LetterAvailability = { ok: true; label: string } | { ok: false; reason: string; href?: string };
+
+type Target = { offerId: string | null; title: string };
+
+export function LetterPanel({
+  siren,
+  offers,
+  letters,
+  availability,
+}: {
+  siren: string;
+  offers: { id: string; title: string }[];
+  letters: LetterSummary[];
+  availability: LetterAvailability;
+}) {
+  const [target, setTarget] = useState<Target | null>(null);
+  const [instruction, setInstruction] = useState('');
+  const [result, setResult] = useState<{ letter: LetterSummary; sentPrompt: string } | null>(null);
+  const [content, setContent] = useState('');
+  // Initialisé depuis les props : la page est dynamique et remonte le composant à chaque navigation.
+  const [history, setHistory] = useState(letters);
+  const [showPrompt, setShowPrompt] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [pending, start] = useTransition();
+
+  if (!availability.ok) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        {availability.reason}
+        {availability.href && (
+          <>
+            {' '}
+            <Link href={availability.href} className="underline">
+              Ouvrir le profil
+            </Link>
+          </>
+        )}
+      </p>
+    );
+  }
+
+  const run = () => {
+    if (!target) return;
+    setError(null);
+    start(async () => {
+      const r = await generateLetter({ siren, offerId: target.offerId, instruction });
+      if (r.ok) {
+        setResult({ letter: r.letter, sentPrompt: r.sentPrompt });
+        setContent(r.letter.content);
+        setHistory((h) => [r.letter, ...h]);
+      } else setError(r.error);
+    });
+  };
+
+  const copy = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      setError('Copie impossible : sélectionnez le texte à la main');
+    }
+  };
+
+  return (
+    <div className="space-y-3 text-sm">
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          variant={target && !target.offerId ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setTarget({ offerId: null, title: 'Candidature spontanée' })}
+        >
+          Lettre spontanée
+        </Button>
+        {offers.map((o) => (
+          <Button
+            type="button"
+            key={o.id}
+            variant={target?.offerId === o.id ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setTarget({ offerId: o.id, title: o.title })}
+            title={o.title}
+          >
+            Lettre : {o.title.length > 40 ? `${o.title.slice(0, 40)}…` : o.title}
+          </Button>
+        ))}
+      </div>
+      {target && (
+        <div className="space-y-2 rounded-md border p-3">
+          <p className="font-medium">{target.title}</p>
+          <Textarea
+            value={instruction}
+            onChange={(e) => setInstruction(e.target.value)}
+            rows={2}
+            placeholder="Consigne facultative : « Insister sur mon expérience Rust, ton sobre »"
+          />
+          <div className="flex items-center gap-2">
+            <Button type="button" size="sm" disabled={pending} onClick={run}>
+              {pending ? 'Génération…' : result ? 'Régénérer' : 'Générer'}
+            </Button>
+            <span className="text-xs text-muted-foreground">via {availability.label}, 5 à 20 s</span>
+          </div>
+          {result && (
+            <div className="space-y-2">
+              <Textarea value={content} onChange={(e) => setContent(e.target.value)} rows={18} />
+              <div className="flex flex-wrap items-center gap-2">
+                <Button type="button" size="sm" variant="outline" onClick={() => copy(content)}>
+                  {copied ? 'Copié' : 'Copier'}
+                </Button>
+                <button type="button" className="text-xs underline" onClick={() => setShowPrompt((v) => !v)}>
+                  {showPrompt ? 'Masquer ce qui a été envoyé' : 'Voir ce qui a été envoyé'}
+                </button>
+                <span className="text-xs text-muted-foreground">Généré avec {result.letter.model}</span>
+              </div>
+              {showPrompt && (
+                <pre className="max-h-64 overflow-auto whitespace-pre-wrap rounded bg-muted p-2 text-xs">
+                  {result.sentPrompt}
+                </pre>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+      {/* Hors du bloc de génération : les erreurs de copie ou de suppression de l'historique restent visibles. */}
+      {error && <p className="text-destructive">{error}</p>}
+      {history.length > 0 && (
+        <details>
+          <summary className="cursor-pointer text-muted-foreground">
+            Lettres générées ({history.length})
+          </summary>
+          <ul className="mt-2 space-y-2">
+            {history.map((l) => (
+              <li key={l.id} className="rounded-md border p-2">
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                  <span>
+                    {formatDate(l.createdAt)} · {l.offerTitle ?? 'spontanée'} · {l.model}
+                  </span>
+                  <span className="flex gap-2">
+                    <button type="button" className="underline" onClick={() => copy(l.content)}>
+                      Copier
+                    </button>
+                    <button
+                      type="button"
+                      className="underline"
+                      disabled={pending}
+                      onClick={() =>
+                        start(async () => {
+                          const r = await deleteLetter(l.id, siren);
+                          if (r.ok) setHistory((h) => h.filter((x) => x.id !== l.id));
+                          else setError(r.error);
+                        })
+                      }
+                    >
+                      Supprimer
+                    </button>
+                  </span>
+                </div>
+                <details className="mt-1">
+                  <summary className="cursor-pointer text-xs">Lire</summary>
+                  <pre className="mt-1 whitespace-pre-wrap text-xs">{l.content}</pre>
+                </details>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </div>
+  );
+}
