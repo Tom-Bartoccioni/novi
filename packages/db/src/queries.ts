@@ -217,3 +217,36 @@ export function deleteCoverLetter(db: Db, profileId: number, id: number): boolea
     .run();
   return result.changes > 0;
 }
+
+export type CoverLetterForExport = CoverLetterWithOffer & { siren: string; companyName: string };
+
+/** Une lettre du profil avec le nom de l'entreprise, pour l'export ; `undefined` si absente ou à un autre profil. */
+export function getCoverLetter(db: Db, profileId: number, id: number): CoverLetterForExport | undefined {
+  return db
+    .select({
+      id: coverLetters.id,
+      siren: coverLetters.siren,
+      companyName: companies.name,
+      offerId: coverLetters.offerId,
+      offerTitle: jobOffers.title,
+      instruction: coverLetters.instruction,
+      content: coverLetters.content,
+      model: coverLetters.model,
+      createdAt: coverLetters.createdAt,
+    })
+    .from(coverLetters)
+    .innerJoin(companies, eq(companies.siren, coverLetters.siren))
+    .leftJoin(jobOffers, eq(jobOffers.id, coverLetters.offerId))
+    .where(and(eq(coverLetters.id, id), eq(coverLetters.profileId, profileId)))
+    .get();
+}
+
+/** Remplace le texte d'une lettre (relecture de l'utilisateur) ; `false` si elle n'existe pas pour ce profil. */
+export function updateCoverLetterContent(db: Db, profileId: number, id: number, content: string): boolean {
+  const result = db
+    .update(coverLetters)
+    .set({ content })
+    .where(and(eq(coverLetters.id, id), eq(coverLetters.profileId, profileId)))
+    .run();
+  return result.changes > 0;
+}

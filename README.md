@@ -88,6 +88,7 @@ pnpm db:generate  # après modification de packages/db/src/schema.ts
 - `apps/web` : application Next.js. `pnpm dev` puis http://localhost:3000. Le worker de MapLibre est copié dans `public/maplibre/` (ignoré par git) par `scripts/copy-maplibre-worker.mjs` avant `dev` et `build`, parce que Turbopack ne sait pas le résoudre depuis le chunk.
   - `/` exploration : liste et carte, filtres dans l'URL. Marqueurs orange et badge « Nouveau » pour les entreprises aux offres récentes, filtres « Nouvelles offres » et « Offres jamais consultées », bandeau du nombre d'offres jamais consultées dans le rayon.
   - `/entreprises/<siren>` fiche : identité, présence en ligne (avec « Analyser le site »), stack sourcée, offres, signaux, score expliqué, statut et notes. Lettres de motivation (spontanée ou par offre) si `LLM_PROVIDER` est configuré et un CV importé.
+- `/lettres/<id>` : page d'impression d'une lettre (le navigateur propose « Enregistrer au format PDF ») ; `/lettres/<id>/docx` télécharge la lettre en Word (« Lettre - Nom Entreprise.docx »). Depuis la fiche, « Enregistrer les modifications » conserve ta relecture avant l'export.
   - `/employeurs-inconnus` : offres non rattachées, rattachement manuel mémorisé.
   - `/profil` : adresse géocodée, rayon, tailles, compétences, fenêtre de nouveauté des offres. CV (PDF) et identité masquée dans les envois au LLM.
   - `/pipeline` : compteurs, dernier refresh automatique et derniers runs.

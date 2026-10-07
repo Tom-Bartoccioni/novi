@@ -7,7 +7,7 @@ import {
   extractPdfText,
   MAX_PDF_BYTES,
 } from '@novi/assist';
-import { type CoverLetterWithOffer, deleteCoverLetter } from '@novi/db';
+import { type CoverLetterWithOffer, deleteCoverLetter, updateCoverLetterContent } from '@novi/db';
 import { crawlCompany, geocode } from '@novi/pipeline';
 import { revalidatePath } from 'next/cache';
 import '@/lib/assist';
@@ -200,6 +200,23 @@ export async function deleteLetter(id: number, siren: string): Promise<ActionRes
     if (!deleteCoverLetter(db(), getProfile().id, id)) return { ok: false, error: 'Lettre introuvable' };
     revalidatePath(`/entreprises/${siren}`);
     return { ok: true };
+  } catch (err) {
+    return fail(err);
+  }
+}
+
+const LETTER_MAX_CHARS = 20_000;
+
+/** Enregistre la relecture de l'utilisateur, pour que l'export reflète le texte corrigé. */
+export async function updateLetter(id: number, siren: string, content: string): Promise<ActionResult> {
+  try {
+    const text = content.trim();
+    if (!text) return { ok: false, error: 'La lettre est vide' };
+    if (text.length > LETTER_MAX_CHARS) return { ok: false, error: 'La lettre est trop longue' };
+    if (!updateCoverLetterContent(db(), getProfile().id, id, text))
+      return { ok: false, error: 'Lettre introuvable' };
+    revalidatePath(`/entreprises/${siren}`);
+    return { ok: true, message: 'Lettre enregistrée' };
   } catch (err) {
     return fail(err);
   }

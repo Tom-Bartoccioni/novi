@@ -25,7 +25,7 @@ La V1 tourne sur les vraies données du 06 : 509 entreprises, 152 offres France 
 
 ### Hors périmètre V2
 
-Streaming de la lettre pendant la génération, plusieurs CV, export PDF/DOCX de la lettre, OCR des CV scannés, notification système ou e-mail à l'arrivée d'une offre, planification sur macOS/Linux (documentée mais pas scriptée).
+Streaming de la lettre pendant la génération, plusieurs CV, OCR des CV scannés, notification système ou e-mail à l'arrivée d'une offre, planification sur macOS/Linux (documentée mais pas scriptée).
 
 ## 2. Architecture
 
@@ -231,7 +231,9 @@ Toutes ces valeurs sont enregistrées par le bouton « Enregistrer le profil » 
 - Clic : panneau avec consigne facultative et « Générer ». Pendant la génération : bouton désactivé, « Génération… ». Résultat dans un `textarea` éditable, boutons « Copier », « Régénérer », mention « Généré avec {modèle} ». Lien « Voir ce qui a été envoyé » qui affiche le prompt anonymisé, conservé uniquement dans l'état du composant.
 - Volet replié « Lettres générées (N) » avec les précédentes, triées par date décroissante, chacune avec « Copier » et « Supprimer ».
 - Action serveur `generateLetter({ siren, offerId?, instruction? })` : charge profil, CV, entreprise, offre ; construit l'identité, avec refus si le nom n'est pas renseigné dans le profil (sans lui, le CV ne peut pas être anonymisé) ; anonymise CV, consigne et offre (le texte d'une offre peut contenir le nom du candidat si c'est une offre déjà échangée, improbable mais sans coût) ; appelle le générateur avec un délai de 60 s ; restaure ; insère dans `cover_letters` ; retourne `{ ok, letter, model, sentPrompt }`. En cas d'erreur, retourne `{ ok: false, error }` sans rien écrire ; pour `rate_limited`, le message inclut « réessayez dans X secondes » si connu.
-- Action `deleteLetter(id)`.
+- Action `deleteLetter(id)`. Action `updateLetter(id, content)` : la relecture faite dans la zone de texte est enregistrée (bouton visible dès que le texte diffère).
+- Export (ajouté le 7 oct. 2026) : lien « Télécharger .docx » (`GET /lettres/[id]/docx`, bibliothèque `docx`, police système 11 pt, marges normales, sans couleur, fichier « Lettre - Nom Entreprise.docx ») et « Imprimer / PDF » (page `/lettres/[id]` à mise en page sobre, barre d'outils masquée à l'impression, le navigateur produit le PDF). Les deux lisent la lettre enregistrée, jamais le texte non sauvegardé.
+- Le prompt reçoit aussi une section « En-tête » : « Ville, le 7 octobre 2026 » et la liste des jetons de coordonnées disponibles avec leur nature (LinkedIn, GitHub, e-mail…) à placer tous en tête de lettre.
 
 ### 7.3 Exploration (`/`)
 

@@ -4,11 +4,13 @@ import { createDb } from '../src/client';
 import { migrateAndSeed } from '../src/migrate';
 import {
   deleteCoverLetter,
+  getCoverLetter,
   getDefaultProfile,
   insertCoverLetter,
   listCoverLetters,
   recordOfferViews,
   seenOfferIds,
+  updateCoverLetterContent,
 } from '../src/queries';
 import { companies, coverLetters, jobOffers, offerViews, profiles } from '../src/schema';
 
@@ -118,5 +120,43 @@ describe('cover letters', () => {
       offerId: null,
       offerTitle: null,
     });
+  });
+});
+
+describe('cover letter export helpers', () => {
+  it('reads one letter with its company name, scoped to the profile', () => {
+    const db = setup();
+    const profileId = getDefaultProfile(db).id;
+    const row = insertCoverLetter(db, {
+      profileId,
+      siren: '000000001',
+      offerId: 'A',
+      instruction: null,
+      content: 'Texte',
+      model: 'm',
+    });
+    expect(getCoverLetter(db, profileId, row.id)).toMatchObject({
+      id: row.id,
+      siren: '000000001',
+      companyName: 'Cliken Web',
+      offerTitle: 'Dev React',
+      content: 'Texte',
+    });
+    expect(getCoverLetter(db, 999, row.id)).toBeUndefined();
+  });
+  it('updates the content for the owning profile only', () => {
+    const db = setup();
+    const profileId = getDefaultProfile(db).id;
+    const row = insertCoverLetter(db, {
+      profileId,
+      siren: '000000001',
+      offerId: null,
+      instruction: null,
+      content: 'Avant',
+      model: 'm',
+    });
+    expect(updateCoverLetterContent(db, 999, row.id, 'Pirate')).toBe(false);
+    expect(updateCoverLetterContent(db, profileId, row.id, 'Après')).toBe(true);
+    expect(getCoverLetter(db, profileId, row.id)?.content).toBe('Après');
   });
 });

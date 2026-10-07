@@ -160,3 +160,21 @@
   margin-top: 4px;
   text-decoration: underline;
 }
+
+/* Impression d'une lettre (/lettres/[id]) : seule la lettre, police système, marges normales. */
+@media print {
+  @page {
+    margin: 2.54cm;
+  }
+  header {
+    display: none;
+  }
+  main {
+    max-width: none;
+    padding: 0;
+  }
+  .letter-print {
+    font-family: Arial, Helvetica, sans-serif;
+    color: #000;
+  }
+}

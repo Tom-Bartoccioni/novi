@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState, useTransition } from 'react';
-import { deleteLetter, generateLetter } from '@/app/actions';
+import { deleteLetter, generateLetter, updateLetter } from '@/app/actions';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { formatDate } from '@/lib/format';
@@ -21,6 +21,20 @@ export type LetterSummary = {
 export type LetterAvailability = { ok: true; label: string } | { ok: false; reason: string; href?: string };
 
 type Target = { offerId: string | null; title: string };
+
+/** Téléchargement Word et page d'impression (PDF via le navigateur) d'une lettre enregistrée. */
+function ExportLinks({ id }: { id: number }) {
+  return (
+    <>
+      <a href={`/lettres/${id}/docx`} className="text-xs underline">
+        Télécharger .docx
+      </a>
+      <a href={`/lettres/${id}`} target="_blank" rel="noreferrer" className="text-xs underline">
+        Imprimer / PDF
+      </a>
+    </>
+  );
+}
 
 export function LetterPanel({
   siren,
@@ -44,6 +58,7 @@ export function LetterPanel({
   // Élément copié : 'result' pour la lettre affichée, sinon l'id d'une lettre de l'historique.
   const [copied, setCopied] = useState<'result' | number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
   const [pending, start] = useTransition();
 
   if (!availability.ok) {
@@ -104,6 +119,26 @@ export function LetterPanel({
     }
   };
 
+  /** Enregistre la relecture faite dans la zone de texte, pour que l'export et l'historique la reflètent. */
+  const save = async () => {
+    if (!result) return;
+    setSaving(true);
+    try {
+      const r = await updateLetter(result.letter.id, siren, content);
+      if (r.ok) {
+        const letter = { ...result.letter, content: content.trim() };
+        setResult({ ...result, letter });
+        setContent(letter.content);
+        setHistory((h) => h.map((x) => (x.id === letter.id ? letter : x)));
+        setError(null);
+      } else setError(r.error);
+    } catch {
+      setError('Erreur réseau : réessayez');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const copy = async (text: string, key: 'result' | number) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -160,6 +195,12 @@ export function LetterPanel({
                 <Button type="button" size="sm" variant="outline" onClick={() => copy(content, 'result')}>
                   {copied === 'result' ? 'Copié' : 'Copier'}
                 </Button>
+                {content !== result.letter.content && (
+                  <Button type="button" size="sm" variant="outline" disabled={saving} onClick={save}>
+                    {saving ? 'Enregistrement…' : 'Enregistrer les modifications'}
+                  </Button>
+                )}
+                <ExportLinks id={result.letter.id} />
                 <button
                   type="button"
                   className="text-xs underline disabled:opacity-50"
@@ -200,6 +241,7 @@ export function LetterPanel({
                     >
                       {copied === l.id ? 'Copié' : 'Copier'}
                     </button>
+                    <ExportLinks id={l.id} />
                     <button
                       type="button"
                       className="underline disabled:opacity-50"
