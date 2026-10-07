@@ -84,6 +84,9 @@ describe('buildLetterPrompt', () => {
     expect(prompt).toContain('[LIEN_1] (LinkedIn), [LIEN_2] (GitHub)');
     expect(prompt).toMatch(/toutes sans exception/);
     expect(prompt).toContain('occuperont 190 caractères');
+    expect(prompt).toContain('Date du jour : 7 octobre 2026');
+    expect(buildLetterPrompt(base).system).toMatch(/Date du jour/);
+    expect(buildLetterPrompt(base).system).toMatch(/au passé/);
     expect(prompt).toContain(`tenir en ${LETTER_MAX_CHARS - 190} caractères au plus`);
     expect(buildLetterPrompt(base).prompt).not.toContain('# En-tête');
   });

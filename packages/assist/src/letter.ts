@@ -50,6 +50,9 @@ const SYSTEM_BASE = [
   "  des espaces réservés : recopie-les tels quels là où l'information est attendue (en-tête, signature),",
   '  sans les modifier ni les expliquer.',
   "  N'utilise que les jetons présents dans le CV ; n'en ajoute pas d'autres.",
+  '- Repère-toi à la « Date du jour » de la section Profil : une expérience dont la date de fin est antérieure',
+  '  est terminée, parle-en au passé et ne la présente jamais comme un poste « actuel » ni avec « chez X » au présent.',
+  "  Seule une expérience marquée « aujourd'hui », « présent » ou « en cours » dans le CV est en cours.",
   '- Rends uniquement la lettre, sans titre, sans commentaire avant ou après.',
 ].join('\n');
 
@@ -85,6 +88,7 @@ export function buildLetterPrompt(input: LetterInput): GenerateInput {
         ])
       : '',
     section('Profil', [
+      header ? `Date du jour : ${header.date}` : null,
       `Habite : ${input.profile.homeLabel}`,
       input.profile.skills.length ? `Compétences déclarées : ${input.profile.skills.join(', ')}` : null,
     ]),
