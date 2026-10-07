@@ -1,7 +1,9 @@
 import {
   anonymize,
   buildLetterPrompt,
+  buildShortenPrompt,
   type Identity,
+  LETTER_MAX_CHARS,
   type LetterInput,
   linkToken,
   restore,
@@ -86,6 +88,19 @@ export function headerTokens(identity: Identity): { token: string; kind: string 
   return tokens;
 }
 
+/** Longueur réelle des coordonnées de l'en-tête (une par ligne) une fois les jetons remplacés. */
+export function headerReservedChars(identity: Identity): number {
+  const lines = [
+    [identity.firstName, identity.lastName].filter(Boolean).join(' '),
+    identity.postalAddress,
+    identity.email,
+    identity.phone,
+    ...identity.links,
+  ].filter((v): v is string => !!v && v.trim().length > 0);
+  // Chaque ligne se termine par un saut de ligne.
+  return lines.reduce((n, l) => n + l.trim().length + 1, 0);
+}
+
 /** « 7 octobre 2026 », pour la ligne de date de la lettre. */
 export function formatLetterDate(now: Date): string {
   return now.toLocaleDateString('fr-FR', {
@@ -129,7 +144,12 @@ export async function generateLetterFor(
   const town = mask(townOf(profile.homeLabel)) ?? '';
   const input: LetterInput = {
     profile: { homeLabel: town, skills: profile.skills },
-    header: { date: formatLetterDate(now), town, tokens: headerTokens(identity) },
+    header: {
+      date: formatLetterDate(now),
+      town,
+      tokens: headerTokens(identity),
+      reservedChars: headerReservedChars(identity),
+    },
     cvText: anonymize(profile.cvText, identity),
     company: {
       name: company.name,
@@ -155,8 +175,21 @@ export async function generateLetterFor(
     revealFirstName: identity.revealFirstName,
   };
   const prompt = buildLetterPrompt(input);
-  const { text } = await generator.generate(prompt);
-  const content = restore(text, identity);
+  const first = await generator.generate(prompt);
+  let content = restore(first.text, identity);
+  // Le modèle compte mal la place des coordonnées : une seconde passe lui donne la longueur réelle constatée.
+  if (content.length > LETTER_MAX_CHARS) {
+    const shorter = await generator.generate(
+      buildShortenPrompt({
+        system: prompt.system,
+        letter: first.text,
+        actualChars: content.length,
+        reservedChars: headerReservedChars(identity),
+      }),
+    );
+    const restored = restore(shorter.text, identity);
+    if (restored.length < content.length) content = restored;
+  }
   const row = insertCoverLetter(db, {
     profileId: profile.id,
     siren: company.siren,

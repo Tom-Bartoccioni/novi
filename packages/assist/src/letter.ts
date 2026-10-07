@@ -4,6 +4,7 @@ import type { GenerateInput } from './llm/types';
 export const LETTER_MAX_TOKENS = 8192;
 /** Longueur maximale de la lettre, espaces compris : contrainte du candidat, rappelée au modèle. */
 export const LETTER_MAX_CHARS = 1500;
+const LINE_BREAK = String.fromCharCode(10);
 
 export type LetterInput = {
   profile: { homeLabel: string; skills: string[] };
@@ -25,7 +26,13 @@ export type LetterInput = {
    * En-tête à produire : date du jour déjà formatée, ville du candidat, et liste des jetons de coordonnées
    * disponibles avec leur nature (« LinkedIn », « GitHub », « e-mail »…) pour que le modèle les place tous.
    */
-  header?: { date: string; town: string; tokens: { token: string; kind: string }[] };
+  header?: {
+    date: string;
+    town: string;
+    tokens: { token: string; kind: string }[];
+    /** Place réelle (en caractères) qu'occuperont les coordonnées une fois les jetons remplacés. */
+    reservedChars: number;
+  };
 };
 
 const SYSTEM_BASE = [
@@ -70,6 +77,11 @@ export function buildLetterPrompt(input: LetterInput): GenerateInput {
                 .map((t) => `${t.token} (${t.kind})`)
                 .join(', ')}.`
             : null,
+          `Attention : une fois remplacés, ces jetons occuperont ${header.reservedChars} caractères. Le reste de la lettre` +
+            ` (date, salutation, corps, formule de politesse, signature) doit donc tenir en ${Math.max(
+              0,
+              LETTER_MAX_CHARS - header.reservedChars,
+            )} caractères au plus.`,
         ])
       : '',
     section('Profil', [
@@ -107,4 +119,28 @@ export function buildLetterPrompt(input: LetterInput): GenerateInput {
     prompt: parts.filter(Boolean).join('\n\n'),
     maxTokens: LETTER_MAX_TOKENS,
   };
+}
+
+/**
+ * Seconde passe quand la lettre restaurée dépasse la limite : on renvoie au modèle sa propre sortie
+ * (toujours anonymisée, elle ne contient que des jetons) avec la longueur réelle constatée et le budget
+ * hors en-tête à respecter.
+ */
+export function buildShortenPrompt(input: {
+  system: string;
+  letter: string;
+  actualChars: number;
+  reservedChars: number;
+}): GenerateInput {
+  const budget = Math.max(0, LETTER_MAX_CHARS - input.reservedChars);
+  const prompt = [
+    `Cette lettre fait ${input.actualChars} caractères une fois les jetons remplacés par les vraies coordonnées,`,
+    `pour une limite de ${LETTER_MAX_CHARS}. Raccourcis-la : le texte hors coordonnées (date, salutation, corps,`,
+    `formule de politesse, signature) doit tenir en ${budget} caractères au plus. Garde les jetons tels quels,`,
+    'garde la date, la salutation et la signature ; coupe dans le corps en gardant les liens concrets avec',
+    "l'entreprise. Rends uniquement la lettre raccourcie.",
+    '',
+    input.letter,
+  ].join(LINE_BREAK);
+  return { system: input.system, prompt, maxTokens: LETTER_MAX_TOKENS };
 }

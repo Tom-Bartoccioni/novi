@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { buildLetterPrompt, LETTER_MAX_CHARS, LETTER_MAX_TOKENS, type LetterInput } from '../src/letter';
+import {
+  buildLetterPrompt,
+  buildShortenPrompt,
+  LETTER_MAX_CHARS,
+  LETTER_MAX_TOKENS,
+  type LetterInput,
+} from '../src/letter';
 
 const base: LetterInput = {
   profile: { homeLabel: 'Nice', skills: ['typescript', 'react'] },
@@ -70,16 +76,36 @@ describe('buildLetterPrompt', () => {
           { token: '[LIEN_1]', kind: 'LinkedIn' },
           { token: '[LIEN_2]', kind: 'GitHub' },
         ],
+        reservedChars: 190,
       },
     });
     expect(prompt).toContain('# En-tête de la lettre');
     expect(prompt).toContain('« Nice, le 7 octobre 2026 »');
     expect(prompt).toContain('[LIEN_1] (LinkedIn), [LIEN_2] (GitHub)');
     expect(prompt).toMatch(/toutes sans exception/);
+    expect(prompt).toContain('occuperont 190 caractères');
+    expect(prompt).toContain(`tenir en ${LETTER_MAX_CHARS - 190} caractères au plus`);
     expect(buildLetterPrompt(base).prompt).not.toContain('# En-tête');
   });
   it('leaves room for reasoning tokens in the max tokens budget', () => {
     expect(LETTER_MAX_TOKENS).toBe(8192);
     expect(buildLetterPrompt(base).maxTokens).toBe(8192);
+  });
+});
+
+describe('buildShortenPrompt', () => {
+  it('quotes the measured length, the remaining budget and the letter itself', () => {
+    const { system, prompt, maxTokens } = buildShortenPrompt({
+      system: 'S',
+      letter: ['[PRENOM] [NOM]', 'Bonjour'].join(String.fromCharCode(10)),
+      actualChars: 1642,
+      reservedChars: 190,
+    });
+    expect(system).toBe('S');
+    expect(prompt).toContain('1642 caractères');
+    expect(prompt).toContain(`tenir en ${LETTER_MAX_CHARS - 190} caractères au plus`);
+    expect(prompt).toContain('[PRENOM] [NOM]');
+    expect(prompt).toMatch(/Rends uniquement la lettre raccourcie/);
+    expect(maxTokens).toBe(LETTER_MAX_TOKENS);
   });
 });

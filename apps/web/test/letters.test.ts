@@ -2,7 +2,14 @@ import type { TextGenerator } from '@novi/assist';
 import { companies, coverLetters, getDefaultProfile, jobOffers, profiles } from '@novi/db';
 import { eq } from 'drizzle-orm';
 import { describe, expect, it, vi } from 'vitest';
-import { formatLetterDate, generateLetterFor, headerTokens, linkKind, townOf } from '@/lib/letters';
+import {
+  formatLetterDate,
+  generateLetterFor,
+  headerReservedChars,
+  headerTokens,
+  linkKind,
+  townOf,
+} from '@/lib/letters';
 import { seededDb } from './helpers';
 
 function ready() {
@@ -225,5 +232,73 @@ describe('letter header', () => {
     expect(out.sentPrompt).toContain('[LIEN_1] (LinkedIn), [LIEN_2] (GitHub)');
     expect(out.sentPrompt).not.toContain('github.com/jd');
     expect(out.letter.content).toContain('https://github.com/jd');
+  });
+});
+
+describe('letter length', () => {
+  const identity = {
+    firstName: 'Jean',
+    lastName: 'Dupont',
+    email: 'j@d.fr',
+    phone: '06 12 34 56 78',
+    postalAddress: null,
+    links: ['https://github.com/jd'],
+    revealFirstName: false,
+  };
+  it('measures the real header size, one line per contact', () => {
+    // « Jean Dupont » (11) + « j@d.fr » (6) + « 06 12 34 56 78 » (14) + lien (21), plus un saut de ligne chacun.
+    expect(headerReservedChars(identity)).toBe(11 + 1 + 6 + 1 + 14 + 1 + 21 + 1);
+    expect(headerReservedChars({ ...identity, firstName: null, links: [] })).toBe(7 + 7 + 15);
+  });
+  it('tells the model the budget left once the header is counted', async () => {
+    const { db, profile } = ready();
+    const gen = fakeGenerator('Bonjour [PRENOM] [NOM]');
+    const out = await generateLetterFor(db, profile, { siren: '000000001' }, gen);
+    const reserved = headerReservedChars({
+      firstName: 'Jean',
+      lastName: 'Dupont',
+      phone: '06 12 34 56 78',
+      links: [],
+      revealFirstName: false,
+    });
+    expect(out.sentPrompt).toContain(`occuperont ${reserved} caractères`);
+    expect(out.sentPrompt).toContain(`tenir en ${1500 - reserved} caractères au plus`);
+  });
+  it('asks for a shorter letter once when the restored text exceeds the limit', async () => {
+    const { db, profile } = ready();
+    const long = `[PRENOM] [NOM]
+${'x'.repeat(1600)}`;
+    const short = `[PRENOM] [NOM]
+${'y'.repeat(900)}`;
+    const generate = vi
+      .fn()
+      .mockResolvedValueOnce({ text: long, model: 'm' })
+      .mockResolvedValueOnce({ text: short, model: 'm' });
+    const out = await generateLetterFor(db, profile, { siren: '000000001' }, { label: 'fake/m', generate });
+    expect(generate).toHaveBeenCalledTimes(2);
+    const second = generate.mock.calls[1]?.[0] as { prompt: string };
+    expect(second.prompt).toContain('Raccourcis-la');
+    expect(second.prompt).toContain(long);
+    expect(out.letter.content).toContain('y'.repeat(900));
+    expect(out.letter.content.length).toBeLessThanOrEqual(1500);
+  });
+  it('keeps the first letter when the second pass is not shorter', async () => {
+    const { db, profile } = ready();
+    const long = `[NOM]
+${'x'.repeat(1600)}`;
+    const generate = vi
+      .fn()
+      .mockResolvedValueOnce({ text: long, model: 'm' })
+      .mockResolvedValueOnce({ text: `${long}${'z'.repeat(10)}`, model: 'm' });
+    const out = await generateLetterFor(db, profile, { siren: '000000001' }, { label: 'fake/m', generate });
+    expect(generate).toHaveBeenCalledTimes(2);
+    expect(out.letter.content).toBe(`Dupont
+${'x'.repeat(1600)}`);
+  });
+  it('does not retry when the letter fits', async () => {
+    const { db, profile } = ready();
+    const gen = fakeGenerator('Bonjour [PRENOM] [NOM]');
+    await generateLetterFor(db, profile, { siren: '000000001' }, gen);
+    expect(gen.generate).toHaveBeenCalledTimes(1);
   });
 });
