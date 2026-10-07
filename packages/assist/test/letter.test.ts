@@ -58,6 +58,25 @@ describe('buildLetterPrompt', () => {
     expect(buildLetterPrompt({ ...base, revealFirstName: true }).system).toMatch(/prénom/i);
     expect(buildLetterPrompt(base).system).not.toMatch(/le prénom du candidat est en clair/i);
   });
+  it('adds a header section with the date, the town and every contact token', () => {
+    const { prompt } = buildLetterPrompt({
+      ...base,
+      header: {
+        date: '7 octobre 2026',
+        town: 'Nice',
+        tokens: [
+          { token: '[PRENOM] [NOM]', kind: 'nom complet' },
+          { token: '[LIEN_1]', kind: 'LinkedIn' },
+          { token: '[LIEN_2]', kind: 'GitHub' },
+        ],
+      },
+    });
+    expect(prompt).toContain('# En-tête de la lettre');
+    expect(prompt).toContain('« Nice, le 7 octobre 2026 »');
+    expect(prompt).toContain('[LIEN_1] (LinkedIn), [LIEN_2] (GitHub)');
+    expect(prompt).toMatch(/toutes sans exception/);
+    expect(buildLetterPrompt(base).prompt).not.toContain('# En-tête');
+  });
   it('leaves room for reasoning tokens in the max tokens budget', () => {
     expect(LETTER_MAX_TOKENS).toBe(8192);
     expect(buildLetterPrompt(base).maxTokens).toBe(8192);

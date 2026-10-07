@@ -2,7 +2,7 @@ import type { TextGenerator } from '@novi/assist';
 import { companies, coverLetters, getDefaultProfile, jobOffers, profiles } from '@novi/db';
 import { eq } from 'drizzle-orm';
 import { describe, expect, it, vi } from 'vitest';
-import { generateLetterFor, townOf } from '@/lib/letters';
+import { formatLetterDate, generateLetterFor, headerTokens, linkKind, townOf } from '@/lib/letters';
 import { seededDb } from './helpers';
 
 function ready() {
@@ -176,5 +176,54 @@ describe('generateLetterFor', () => {
     await generateLetterFor(db, getDefaultProfile(db), { siren: '000000001' }, gen);
     expect(gen.generate).toHaveBeenCalledTimes(1);
     expect(db.select().from(coverLetters).all()).toHaveLength(1);
+  });
+});
+
+describe('letter header', () => {
+  it('lists every declared contact as a token with its kind', () => {
+    const tokens = headerTokens({
+      firstName: 'Jean',
+      lastName: 'Dupont',
+      email: 'j@d.fr',
+      phone: '06 12 34 56 78',
+      postalAddress: null,
+      links: ['https://www.linkedin.com/in/jd', 'https://github.com/jd', 'https://jd.dev'],
+      revealFirstName: false,
+    });
+    expect(tokens).toEqual([
+      { token: '[PRENOM] [NOM]', kind: 'nom complet' },
+      { token: '[EMAIL]', kind: 'e-mail' },
+      { token: '[TELEPHONE]', kind: 'téléphone' },
+      { token: '[LIEN_1]', kind: 'LinkedIn' },
+      { token: '[LIEN_2]', kind: 'GitHub' },
+      { token: '[LIEN_3]', kind: 'site personnel' },
+    ]);
+    expect(linkKind('https://gitlab.com/x')).toBe('GitLab');
+  });
+  it('writes the first name in clear when revealed', () => {
+    const tokens = headerTokens({ firstName: 'Jean', lastName: 'Dupont', links: [], revealFirstName: true });
+    expect(tokens[0]).toEqual({ token: 'Jean [NOM]', kind: 'nom complet' });
+  });
+  it('formats the letter date in French', () => {
+    expect(formatLetterDate(new Date('2026-10-07T10:00:00Z'))).toBe('7 octobre 2026');
+  });
+  it('puts the date, the town and the tokens in the prompt', async () => {
+    const { db, profile } = ready();
+    db.update(profiles)
+      .set({ links: ['https://www.linkedin.com/in/jd', 'https://github.com/jd'] })
+      .where(eq(profiles.id, profile.id))
+      .run();
+    const gen = fakeGenerator('[PRENOM] [NOM]\n[LIEN_1]\n[LIEN_2]\n\nNice, le 7 octobre 2026\n\nBonjour');
+    const out = await generateLetterFor(
+      db,
+      getDefaultProfile(db),
+      { siren: '000000001' },
+      gen,
+      new Date('2026-10-07T10:00:00Z'),
+    );
+    expect(out.sentPrompt).toContain('« Nice, le 7 octobre 2026 »');
+    expect(out.sentPrompt).toContain('[LIEN_1] (LinkedIn), [LIEN_2] (GitHub)');
+    expect(out.sentPrompt).not.toContain('github.com/jd');
+    expect(out.letter.content).toContain('https://github.com/jd');
   });
 });

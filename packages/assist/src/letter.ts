@@ -19,6 +19,11 @@ export type LetterInput = {
   offer?: { title: string; contractType: string | null; description: string | null; city: string | null };
   instruction?: string;
   revealFirstName: boolean;
+  /**
+   * En-tête à produire : date du jour déjà formatée, ville du candidat, et liste des jetons de coordonnées
+   * disponibles avec leur nature (« LinkedIn », « GitHub », « e-mail »…) pour que le modèle les place tous.
+   */
+  header?: { date: string; town: string; tokens: { token: string; kind: string }[] };
 };
 
 const SYSTEM_BASE = [
@@ -51,8 +56,19 @@ function section(title: string, lines: (string | null | undefined)[]): string {
 
 export function buildLetterPrompt(input: LetterInput): GenerateInput {
   const { company, offer } = input;
+  const header = input.header;
   const parts = [
     section('CV du candidat', [input.cvText]),
+    header
+      ? section('En-tête de la lettre', [
+          `Commence par la ligne « ${header.town}, le ${header.date} ».`,
+          header.tokens.length
+            ? `Coordonnées à placer en tête de lettre, une par ligne, toutes sans exception : ${header.tokens
+                .map((t) => `${t.token} (${t.kind})`)
+                .join(', ')}.`
+            : null,
+        ])
+      : '',
     section('Profil', [
       `Habite : ${input.profile.homeLabel}`,
       input.profile.skills.length ? `Compétences déclarées : ${input.profile.skills.join(', ')}` : null,

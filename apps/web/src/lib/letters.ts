@@ -1,4 +1,13 @@
-import { anonymize, buildLetterPrompt, type LetterInput, restore, type TextGenerator } from '@novi/assist';
+import {
+  anonymize,
+  buildLetterPrompt,
+  type Identity,
+  type LetterInput,
+  linkToken,
+  restore,
+  type TextGenerator,
+  TOKENS,
+} from '@novi/assist';
 import { loadTechTags } from '@novi/core';
 import {
   type CoverLetterWithOffer,
@@ -48,11 +57,51 @@ export function townOf(homeLabel: string): string {
   return homeLabel.replace(/^.*\b\d{5}\s+/, '').trim() || homeLabel.trim();
 }
 
+/** Nature d'un lien pour l'en-tête, déduite du domaine : la valeur elle-même reste masquée. */
+export function linkKind(url: string): string {
+  const host = url.toLowerCase();
+  if (host.includes('linkedin.com')) return 'LinkedIn';
+  if (host.includes('github.com')) return 'GitHub';
+  if (host.includes('gitlab.com')) return 'GitLab';
+  return 'site personnel';
+}
+
+/** Jetons de coordonnées effectivement disponibles pour l'en-tête, dans l'ordre d'affichage souhaité. */
+export function headerTokens(identity: Identity): { token: string; kind: string }[] {
+  const tokens: { token: string; kind: string }[] = [];
+  if (identity.firstName || identity.lastName) {
+    tokens.push({
+      token: identity.revealFirstName
+        ? `${identity.firstName ?? ''} ${TOKENS.lastName}`.trim()
+        : `${TOKENS.firstName} ${TOKENS.lastName}`,
+      kind: 'nom complet',
+    });
+  }
+  if (identity.postalAddress) tokens.push({ token: TOKENS.postalAddress, kind: 'adresse postale' });
+  if (identity.email) tokens.push({ token: TOKENS.email, kind: 'e-mail' });
+  if (identity.phone) tokens.push({ token: TOKENS.phone, kind: 'téléphone' });
+  identity.links.forEach((link, i) => {
+    tokens.push({ token: linkToken(i), kind: linkKind(link) });
+  });
+  return tokens;
+}
+
+/** « 7 octobre 2026 », pour la ligne de date de la lettre. */
+export function formatLetterDate(now: Date): string {
+  return now.toLocaleDateString('fr-FR', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'Europe/Paris',
+  });
+}
+
 export async function generateLetterFor(
   db: Db,
   profile: Profile,
   request: LetterRequest,
   generator: TextGenerator,
+  now: Date = new Date(),
 ): Promise<LetterOutcome> {
   if (!profile.cvText) throw new Error('Importez votre CV dans le profil pour générer des lettres');
   const identity = identityFromProfile(profile);
@@ -77,8 +126,10 @@ export async function generateLetterFor(
   if (request.offerId && !offer) throw new Error('Offre inconnue pour cette entreprise');
   // Tout texte libre susceptible de contenir une donnée personnelle passe par ici avant le prompt.
   const mask = (text: string | null | undefined) => (text ? anonymize(text, identity) : null);
+  const town = mask(townOf(profile.homeLabel)) ?? '';
   const input: LetterInput = {
-    profile: { homeLabel: mask(townOf(profile.homeLabel)) ?? '', skills: profile.skills },
+    profile: { homeLabel: town, skills: profile.skills },
+    header: { date: formatLetterDate(now), town, tokens: headerTokens(identity) },
     cvText: anonymize(profile.cvText, identity),
     company: {
       name: company.name,
