@@ -2,6 +2,8 @@ import type { GenerateInput } from './llm/types';
 
 // Sortie courte, mais les modèles à raisonnement comptent leurs jetons de réflexion dans ce plafond.
 export const LETTER_MAX_TOKENS = 8192;
+/** Longueur maximale de la lettre, espaces compris : contrainte du candidat, rappelée au modèle. */
+export const LETTER_MAX_CHARS = 1500;
 
 export type LetterInput = {
   profile: { homeLabel: string; skills: string[] };
@@ -30,7 +32,8 @@ const SYSTEM_BASE = [
   'Tu rédiges des lettres de motivation en français pour un développeur ou une développeuse.',
   '',
   'Règles :',
-  '- Une page maximum, entre 250 et 350 mots, en paragraphes courts.',
+  `- ${LETTER_MAX_CHARS} caractères maximum, espaces et en-tête compris (environ 220 mots), en paragraphes courts.`,
+  '  Cette limite est stricte : préfère couper un paragraphe plutôt que la dépasser.',
   '- Ton direct et concret, sans formules creuses ni flatterie.',
   "- Appuie-toi uniquement sur les expériences, projets et compétences présents dans le CV : n'invente rien,",
   '  aucune expérience, aucun chiffre, aucun diplôme absent du CV.',

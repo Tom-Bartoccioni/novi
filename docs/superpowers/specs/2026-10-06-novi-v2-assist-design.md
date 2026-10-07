@@ -163,7 +163,7 @@ type LetterInput = {
 };
 ```
 
-Système (français) : rédacteur de lettres de motivation pour un développeur ; une page maximum (250 à 350 mots) ; ton direct et concret, pas de formules creuses ; s'appuyer uniquement sur les expériences présentes dans le CV, ne rien inventer ; relier explicitement deux ou trois technos ou projets du candidat à ce que fait l'entreprise ; si une information manque, rester général plutôt qu'inventer ; les jetons entre crochets comme `[NOM]` ou `[TELEPHONE]` sont des espaces réservés à recopier tels quels, notamment dans l'en-tête et la signature ; rendre uniquement la lettre, sans commentaire.
+Système (français) : rédacteur de lettres de motivation pour un développeur ; 1500 caractères maximum, espaces compris ; ton direct et concret, pas de formules creuses ; s'appuyer uniquement sur les expériences présentes dans le CV, ne rien inventer ; relier explicitement deux ou trois technos ou projets du candidat à ce que fait l'entreprise ; si une information manque, rester général plutôt qu'inventer ; les jetons entre crochets comme `[NOM]` ou `[TELEPHONE]` sont des espaces réservés à recopier tels quels, notamment dans l'en-tête et la signature ; rendre uniquement la lettre, sans commentaire.
 
 Utilisateur : CV, puis entreprise (champs disponibles seulement), puis offre si présente, puis « Consigne particulière » si présente, puis la demande : « Rédige la lettre de candidature spontanée » ou « Rédige la lettre de motivation pour cette offre ».
 

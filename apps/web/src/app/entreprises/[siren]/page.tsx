@@ -1,3 +1,4 @@
+import { LETTER_MAX_CHARS } from '@novi/assist';
 import { loadIngestConfig } from '@novi/core';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -257,6 +258,7 @@ export default async function CompanyPage({ params }: { params: Promise<{ siren:
               offers={activeOffers.map((o) => ({ id: o.id, title: o.title }))}
               letters={letters}
               availability={availability}
+              maxChars={LETTER_MAX_CHARS}
             />
           </Section>
 

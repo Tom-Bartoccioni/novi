@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildLetterPrompt, LETTER_MAX_TOKENS, type LetterInput } from '../src/letter';
+import { buildLetterPrompt, LETTER_MAX_CHARS, LETTER_MAX_TOKENS, type LetterInput } from '../src/letter';
 
 const base: LetterInput = {
   profile: { homeLabel: 'Nice', skills: ['typescript', 'react'] },
@@ -22,7 +22,8 @@ const base: LetterInput = {
 describe('buildLetterPrompt', () => {
   it('asks for a spontaneous application without an offer', () => {
     const { system, prompt } = buildLetterPrompt(base);
-    expect(system).toMatch(/une page/i);
+    expect(system).toContain(`${LETTER_MAX_CHARS} caractères maximum`);
+    expect(LETTER_MAX_CHARS).toBe(1500);
     expect(system).toMatch(/\[NOM\]/);
     expect(system).toMatch(/n'invente/i);
     expect(prompt).toContain('# CV du candidat');

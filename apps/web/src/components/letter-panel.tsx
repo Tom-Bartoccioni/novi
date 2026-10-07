@@ -41,11 +41,14 @@ export function LetterPanel({
   offers,
   letters,
   availability,
+  maxChars,
 }: {
   siren: string;
   offers: { id: string; title: string }[];
   letters: LetterSummary[];
   availability: LetterAvailability;
+  /** Longueur maximale demandée au modèle ; au-delà, le compteur passe en rouge. */
+  maxChars: number;
 }) {
   const [target, setTarget] = useState<Target | null>(null);
   const [instruction, setInstruction] = useState('');
@@ -191,6 +194,12 @@ export function LetterPanel({
           {result && (
             <div className="space-y-2">
               <Textarea value={content} onChange={(e) => setContent(e.target.value)} rows={18} />
+              <p
+                className={`text-xs ${content.length > maxChars ? 'text-destructive' : 'text-muted-foreground'}`}
+              >
+                {content.length} / {maxChars} caractères
+                {content.length > maxChars ? ' : dépassement, raccourcissez ou régénérez' : ''}
+              </p>
               <div className="flex flex-wrap items-center gap-2">
                 <Button type="button" size="sm" variant="outline" onClick={() => copy(content, 'result')}>
                   {copied === 'result' ? 'Copié' : 'Copier'}
