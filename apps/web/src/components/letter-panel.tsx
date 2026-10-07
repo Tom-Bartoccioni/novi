@@ -189,7 +189,9 @@ export function LetterPanel({
             <Button type="button" size="sm" disabled={pending} onClick={run}>
               {pending ? 'Génération…' : result ? 'Régénérer' : 'Générer'}
             </Button>
-            <span className="text-xs text-muted-foreground">via {availability.label}, 5 à 20 s</span>
+            <span className="text-xs text-muted-foreground">
+              via {availability.label}, de 10 s à 2 min selon la charge du fournisseur
+            </span>
           </div>
           {result && (
             <div className="space-y-2">

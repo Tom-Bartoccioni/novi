@@ -27,7 +27,7 @@ function llmMessage(code: LlmErrorCode, retryAfterSeconds?: number, status?: num
         ? `Quota du fournisseur LLM atteint : réessayez dans ${retryAfterSeconds} secondes`
         : 'Quota du fournisseur LLM atteint : réessayez dans quelques minutes';
     case 'timeout':
-      return 'Délai dépassé (60 s) en attendant le fournisseur LLM';
+      return 'Délai dépassé en attendant le fournisseur LLM';
     case 'bad_response':
       return 'Réponse inattendue du fournisseur LLM';
     case 'refused':

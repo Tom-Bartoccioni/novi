@@ -7,4 +7,5 @@ export interface TextGenerator {
   generate(input: GenerateInput, signal?: AbortSignal): Promise<GenerateResult>;
 }
 
-export const LLM_TIMEOUT_MS = 60_000;
+/** Deux minutes : les paliers gratuits connaissent des pics de latence bien au-delà de la minute. */
+export const LLM_TIMEOUT_MS = 120_000;
