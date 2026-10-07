@@ -84,6 +84,21 @@ describe('createOpenAiCompatibleGenerator', () => {
     const gen = createOpenAiCompatibleGenerator({ ...opts, fetchImpl: fakeFetch(503, {}) });
     await expect(gen.generate(input)).rejects.toMatchObject({ code: 'http', status: 503 });
   });
+  it('quotes the provider message on other statuses, redacted and truncated', async () => {
+    const long = 'x'.repeat(300);
+    const body = [{ error: { code: 404, message: `This model is no longer available (k) ${long}` } }];
+    const gen = createOpenAiCompatibleGenerator({ ...opts, fetchImpl: fakeFetch(404, body) });
+    const err = await gen.generate(input).catch((e) => e);
+    expect(err).toMatchObject({ code: 'http', status: 404 });
+    expect(err.message).toContain(
+      'Erreur HTTP 404 du fournisseur LLM : This model is no longer available (…)',
+    );
+    expect(err.message.length).toBeLessThan(260);
+    const plain = createOpenAiCompatibleGenerator({ ...opts, fetchImpl: fakeFetch(502, { error: {} }) });
+    await expect(plain.generate(input)).rejects.toMatchObject({
+      message: 'Erreur HTTP 502 du fournisseur LLM',
+    });
+  });
   it('rejects a response without text', async () => {
     const gen = createOpenAiCompatibleGenerator({ ...opts, fetchImpl: fakeFetch(200, { choices: [] }) });
     await expect(gen.generate(input)).rejects.toMatchObject({ code: 'bad_response' });

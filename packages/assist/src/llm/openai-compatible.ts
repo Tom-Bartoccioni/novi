@@ -23,17 +23,42 @@ type ChatCompletion = {
 };
 
 /** Lève une `LlmError` pour toute réponse en erreur, après avoir vidé le corps pour libérer la connexion. */
-async function ensureOk(response: Response): Promise<void> {
+const PROVIDER_MESSAGE_MAX = 200;
+
+/**
+ * Extrait le message d'erreur du fournisseur (format OpenAI `{ error: { message } }`, ou tableau Gemini),
+ * tronqué et sans la clé : il explique au lecteur pourquoi le modèle est refusé (modèle retiré, forte demande…).
+ */
+async function providerMessage(response: Response, apiKey: string): Promise<string | undefined> {
+  try {
+    const raw = (await response.json()) as unknown;
+    const body = Array.isArray(raw) ? raw[0] : raw;
+    const message = (body as { error?: { message?: unknown } } | null)?.error?.message;
+    if (typeof message !== 'string' || !message.trim()) return undefined;
+    const clean = apiKey ? message.split(apiKey).join('…') : message;
+    return clean.length > PROVIDER_MESSAGE_MAX ? `${clean.slice(0, PROVIDER_MESSAGE_MAX)}…` : clean;
+  } catch {
+    return undefined;
+  }
+}
+
+async function ensureOk(response: Response, apiKey: string): Promise<void> {
   if (response.ok) return;
-  // Le corps est abandonné sans être lu : il n'est jamais affiché.
-  await response.body?.cancel().catch(() => {});
-  if (response.status === 401 || response.status === 403) throw new LlmError('unauthorized');
+  if (response.status === 401 || response.status === 403) {
+    await response.body?.cancel().catch(() => {});
+    throw new LlmError('unauthorized');
+  }
   if (response.status === 429) {
+    await response.body?.cancel().catch(() => {});
     throw new LlmError('rate_limited', {
       retryAfterSeconds: parseRetryAfter(response.headers.get('retry-after')),
     });
   }
-  throw new LlmError('http', { status: response.status });
+  const detail = await providerMessage(response, apiKey);
+  throw new LlmError('http', {
+    status: response.status,
+    message: detail ? `Erreur HTTP ${response.status} du fournisseur LLM : ${detail}` : undefined,
+  });
 }
 
 /** Convertit une erreur levée pendant l'appel ou la lecture du corps. */
@@ -78,7 +103,7 @@ export function createOpenAiCompatibleGenerator(opts: OpenAiCompatibleOptions): 
           }),
           signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
         });
-        await ensureOk(response);
+        await ensureOk(response, opts.apiKey);
         // Le corps est lu sous le même signal : une coupure pendant la lecture reste un délai dépassé.
         json = (await response.json()) as ChatCompletion | null;
       } catch (err) {

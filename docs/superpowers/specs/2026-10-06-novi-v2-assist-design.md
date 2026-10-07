@@ -56,7 +56,7 @@ Règles inchangées : les composants client n'importent jamais `@novi/db`, `@nov
 | `LLM_PROVIDER` | `openai-compatible` ou `anthropic`. Absente : fonctionnalité masquée. | `openai-compatible` |
 | `LLM_BASE_URL` | Base de l'API compatible OpenAI, sans `/chat/completions`. | `https://generativelanguage.googleapis.com/v1beta/openai` |
 | `LLM_API_KEY` | Clé du fournisseur. Pour Anthropic, la clé API Anthropic. | |
-| `LLM_MODEL` | Identifiant du modèle. | `gemini-2.5-flash` (à ajuster selon le palier gratuit du jour) ; `claude-opus-5-5` pour Anthropic |
+| `LLM_MODEL` | Identifiant du modèle. | `gemini-3.5-flash-lite` (à ajuster selon le palier gratuit du jour) ; `claude-opus-5-5` pour Anthropic |
 
 `.env.example` documente les trois fournisseurs gratuits courants (Gemini, Groq, Mistral) avec leur base URL, et la variante Anthropic.
 
