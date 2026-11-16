@@ -2,6 +2,12 @@
 
 Découverte de startups et PME tech autour de chez soi. Le concept est dans `Concept.md`, le design dans `docs/superpowers/specs/`.
 
+## Démo
+
+![Novi : exploration sur carte, filtres par techno, fiche entreprise avec score expliqué, suivi, profil et pipeline](docs/media/novi-demo.gif)
+
+_Aperçu accéléré 2×. Version complète (1 min, 1080p) : [docs/media/novi-demo.mp4](docs/media/novi-demo.mp4)._
+
 ## Prérequis
 
 - Node 22 ou plus récent, pnpm 9.
