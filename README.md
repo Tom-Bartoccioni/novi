@@ -4,10 +4,6 @@ Découverte de startups et PME tech autour de chez soi. Le concept est dans `Con
 
 ## Démo
 
-![Novi : exploration sur carte, filtres par techno, fiche entreprise avec score expliqué, suivi, profil et pipeline](docs/media/novi-demo.gif)
-
-_Aperçu accéléré 2×. Version complète (1 min, 1080p) :_
-
 https://github.com/user-attachments/assets/cf646f57-fd78-41ad-b5f2-afbca1f3dc3b
 
 ## Prérequis
